@@ -426,7 +426,7 @@
               autocapitalize="none"
             />
             <button class="btn btn-outline" id="validateBtn" onclick="validateAndAdd()">
-              <span id="validateBtnText">Validate &amp; Add</span>
+              <span id="validateBtnText">Add</span>
               <div class="btn-spin light" id="validateSpin"></div>
             </button>
           </div>
@@ -438,7 +438,7 @@
       </div><!-- /card-body -->
 
       <div class="card-foot">
-        URLs are validated server-side before saving · Opens in a new tab
+        URLs are saved directly to your sheet · Opens in a new tab
       </div>
     </div>
   </div>
@@ -663,7 +663,7 @@
     }
 
     /* ─────────────────────────────────────────
-       VALIDATE & ADD NEW URL
+       ADD NEW URL (no client-side validation)
     ───────────────────────────────────────── */
     function validateAndAdd() {
       let raw = document.getElementById('newUrl').value.trim();
@@ -674,22 +674,15 @@
         return;
       }
 
-      // Auto-prepend https:// if missing
+      // Auto-prepend https:// if no scheme present
       if (!/^https?:\/\//i.test(raw)) raw = 'https://' + raw;
 
-      // Client-side format check
-      if (!isValidUrlFormat(raw)) {
-        showStatus('Invalid URL format. Example: https://example.com', 'error');
-        document.getElementById('newUrl').focus();
-        return;
-      }
-
       if (!navigator.onLine) {
-        showStatus('No Internet Connection. Cannot validate URL.', 'error');
+        showStatus('No Internet Connection.', 'error');
         return;
       }
 
-      // Client-side duplicate check
+      // Duplicate check
       const norm = u => u.replace(/\/+$/, '').toLowerCase();
       const dupe = savedUrls.find(u => norm(u) === norm(raw));
       if (dupe) {
@@ -699,8 +692,8 @@
         return;
       }
 
-      setLoading('validateBtn', 'validateBtnText', 'validateSpin', true, 'Validating…');
-      showStatus('Checking if the URL is reachable…', 'info');
+      setLoading('validateBtn', 'validateBtnText', 'validateSpin', true, 'Saving…');
+      clearStatus();
 
       const endpoint = APPS_SCRIPT_URL
         + '?action=validateAndSave'
@@ -712,10 +705,9 @@
           return res.json();
         })
         .then(data => {
-          setLoading('validateBtn', 'validateBtnText', 'validateSpin', false, 'Validate &amp; Add');
+          setLoading('validateBtn', 'validateBtnText', 'validateSpin', false, 'Add');
 
           if (data.success) {
-            // FIX: Open in new tab, do NOT replace the page
             const savedUrl = data.url || raw;
             if (!savedUrls.includes(savedUrl)) {
               savedUrls.push(savedUrl);
@@ -736,11 +728,11 @@
             }, 800);
 
           } else {
-            showStatus('✗ ' + (data.message || 'URL could not be validated.'), 'error');
+            showStatus('✗ ' + (data.message || 'Could not save URL.'), 'error');
           }
         })
         .catch(err => {
-          setLoading('validateBtn', 'validateBtnText', 'validateSpin', false, 'Validate &amp; Add');
+          setLoading('validateBtn', 'validateBtnText', 'validateSpin', false, 'Add');
           const msg = err.name === 'AbortError'
             ? 'Request timed out. Apps Script may be slow — please try again.'
             : 'Request failed: ' + err.message;
@@ -751,13 +743,6 @@
     /* ─────────────────────────────────────────
        HELPERS
     ───────────────────────────────────────── */
-    function isValidUrlFormat(str) {
-      try {
-        const u = new URL(str);
-        return u.protocol === 'http:' || u.protocol === 'https:';
-      } catch (_) { return false; }
-    }
-
     function showStatus(msg, type) {
       const el = document.getElementById('status');
       el.textContent = msg;
