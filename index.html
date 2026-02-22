@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <title>App Viewer</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg:          #080b10;
+      --panel:       #0f1318;
+      --panel2:      #161b22;
+      --border:      rgba(255,255,255,0.07);
+      --border-hi:   rgba(255,255,255,0.16);
+      --text:        #e6edf3;
+      --text-muted:  rgba(230,237,243,0.38);
+      --text-dim:    rgba(230,237,243,0.60);
+      --accent:      #58a6ff;
+      --accent-glow: rgba(88,166,255,0.18);
+      --success:     #3fb950;
+      --error:       #f85149;
+      --warn:        #d29922;
+      --radius-sm:   10px;
+      --radius:      14px;
+      --radius-lg:   20px;
+    }
+
+    body {
+      min-height: 100vh;
+      width: 100%;
+      background-color: var(--bg);
+      background-image:
+        linear-gradient(rgba(88,166,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(88,166,255,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'DM Sans', sans-serif;
+      -webkit-font-smoothing: antialiased;
+      padding: 24px 16px;
+    }
+
+    /* ── LOADER ── */
+    #loader {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      animation: fadeIn .4s ease both;
+    }
+    #loader.hidden { display: none; }
+
+    .loader-ring {
+      position: relative;
+      width: 52px; height: 52px;
+    }
+    .loader-ring::before,
+    .loader-ring::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+    }
+    .loader-ring::before {
+      border: 2px solid rgba(88,166,255,0.12);
+    }
+    .loader-ring::after {
+      border: 2px solid transparent;
+      border-top-color: var(--accent);
+      animation: spin .9s cubic-bezier(.6,0,.4,1) infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    #loaderMsg {
+      font-size: 13px;
+      color: var(--text-muted);
+      letter-spacing: .2px;
+    }
+
+    /* ── APP CARD ── */
+    #app {
+      display: none;
+      flex-direction: column;
+      width: min(480px, 100%);
+      gap: 0;
+      animation: riseUp .4s cubic-bezier(.22,.68,0,1.2) both;
+    }
+    #app.visible { display: flex; }
+    @keyframes riseUp {
+      from { opacity:0; transform: translateY(20px) scale(.98); }
+      to   { opacity:1; transform: translateY(0)    scale(1);   }
+    }
+    @keyframes fadeIn {
+      from { opacity:0; } to { opacity:1; }
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+
+    .card-bar {
+      height: 3px;
+      background: linear-gradient(90deg, var(--accent) 0%, rgba(88,166,255,0) 100%);
+    }
+
+    .card-head {
+      padding: 28px 28px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .card-head-text h1 {
+      font-family: 'Syne', sans-serif;
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--text);
+      letter-spacing: -.4px;
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+    .card-head-text p {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    /* Refresh button in header */
+    #refreshBtn {
+      flex-shrink: 0;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-muted);
+      padding: 7px 10px;
+      cursor: pointer;
+      font-size: 15px;
+      line-height: 1;
+      transition: border-color .18s, color .18s, background .18s, transform .15s;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #refreshBtn:hover:not(:disabled) {
+      border-color: var(--border-hi);
+      color: var(--text);
+      background: rgba(255,255,255,0.04);
+    }
+    #refreshBtn:disabled { opacity: .3; cursor: not-allowed; }
+    #refreshBtn.spinning svg { animation: spin .7s linear infinite; }
+
+    .card-body { padding: 24px 28px; display: flex; flex-direction: column; gap: 20px; }
+
+    /* ── FORM CONTROLS ── */
+    .field { display: flex; flex-direction: column; gap: 8px; }
+
+    .field-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .8px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .select-wrap { position: relative; }
+    .select-wrap::after {
+      content: '';
+      position: absolute;
+      right: 14px; top: 50%;
+      transform: translateY(-50%);
+      width: 0; height: 0;
+      border-left: 5px solid transparent;
+      border-right: 5px solid transparent;
+      border-top: 5px solid var(--text-muted);
+      pointer-events: none;
+    }
+
+    select, input[type="url"], input[type="text"] {
+      width: 100%;
+      background: var(--panel2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-size: 13.5px;
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 500;
+      padding: 11px 14px;
+      outline: none;
+      transition: border-color .18s, box-shadow .18s;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+    select { padding-right: 36px; cursor: pointer; }
+    select option { background: #161b22; }
+    select:focus, input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+    input::placeholder { color: var(--text-muted); }
+
+    /* ── BUTTONS ── */
+    .btn {
+      display: inline-flex;
+      align-items: center; justify-content: center;
+      gap: 7px;
+      border: none; border-radius: var(--radius-sm);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13.5px; font-weight: 600;
+      cursor: pointer;
+      padding: 11px 18px;
+      transition: opacity .18s, transform .12s, box-shadow .18s;
+      white-space: nowrap;
+      user-select: none;
+    }
+    .btn:active:not(:disabled) { transform: scale(.96); }
+    .btn:disabled { opacity: .3; cursor: not-allowed; transform: none !important; }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #0a0d12;
+      width: 100%;
+      padding: 13px;
+      box-shadow: 0 0 0 0 var(--accent-glow);
+    }
+    .btn-primary:hover:not(:disabled) {
+      box-shadow: 0 0 0 6px var(--accent-glow);
+    }
+
+    .btn-outline {
+      background: transparent;
+      color: var(--text-dim);
+      border: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .btn-outline:hover:not(:disabled) {
+      border-color: var(--border-hi);
+      color: var(--text);
+      background: rgba(255,255,255,0.04);
+    }
+
+    .btn-danger {
+      background: transparent;
+      color: var(--error);
+      border: 1px solid rgba(248,81,73,0.3);
+      flex-shrink: 0;
+      padding: 11px 14px;
+    }
+    .btn-danger:hover:not(:disabled) {
+      background: rgba(248,81,73,0.08);
+      border-color: rgba(248,81,73,0.6);
+    }
+
+    /* ── URL ROW ── */
+    .url-row { display: flex; gap: 8px; }
+    .url-row input { flex: 1; min-width: 0; }
+
+    /* ── Select row with delete ── */
+    .select-action-row { display: flex; gap: 8px; align-items: stretch; }
+    .select-action-row .select-wrap { flex: 1; min-width: 0; }
+
+    /* ── DIVIDER ── */
+    .divider {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 11px; letter-spacing: .4px;
+      color: var(--text-muted);
+    }
+    .divider::before, .divider::after {
+      content: ''; flex: 1;
+      height: 1px; background: var(--border);
+    }
+
+    /* ── STATUS MESSAGES ── */
+    #status {
+      display: none;
+      font-size: 12.5px;
+      line-height: 1.55;
+      padding: 11px 14px;
+      border-radius: var(--radius-sm);
+      animation: fadeIn .2s ease both;
+    }
+    #status.success { background: rgba(63,185,80,.1);  color: var(--success); border: 1px solid rgba(63,185,80,.25); }
+    #status.error   { background: rgba(248,81,73,.1);  color: var(--error);   border: 1px solid rgba(248,81,73,.25); }
+    #status.warn    { background: rgba(210,153,34,.1); color: var(--warn);    border: 1px solid rgba(210,153,34,.25); }
+    #status.info    { background: rgba(88,166,255,.08); color: var(--accent); border: 1px solid rgba(88,166,255,.2); }
+
+    /* ── BUTTON INNER SPINNER ── */
+    .btn-spin {
+      width: 14px; height: 14px;
+      border: 2px solid rgba(10,13,18,0.2);
+      border-top-color: #0a0d12;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      display: none;
+    }
+    .btn-spin.light {
+      border-color: rgba(255,255,255,0.15);
+      border-top-color: var(--text-dim);
+    }
+
+    /* ── FOOTER ── */
+    .card-foot {
+      padding: 14px 28px;
+      border-top: 1px solid var(--border);
+      font-size: 11px;
+      color: var(--text-muted);
+      text-align: center;
+      letter-spacing: .1px;
+    }
+
+    /* ── ERROR SCREEN ── */
+    #errorScreen {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      text-align: center;
+    }
+    #errorScreen.visible { display: flex; }
+    .error-icon { font-size: 36px; }
+    #errorScreen h2 { font-family: 'Syne', sans-serif; font-size: 18px; color: var(--text); }
+    #errorScreen p  { font-size: 13px; color: var(--text-muted); max-width: 320px; line-height: 1.6; }
+    #errorScreen .btn { margin-top: 6px; padding: 11px 28px; }
+
+    /* ── COUNT BADGE ── */
+    .url-count {
+      font-size: 11px;
+      color: var(--text-muted);
+      background: var(--panel2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 2px 8px;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── LOADER ── -->
+  <div id="loader">
+    <div class="loader-ring"></div>
+    <span id="loaderMsg">Connecting to your library…</span>
+  </div>
+
+  <!-- ── ERROR SCREEN ── -->
+  <div id="errorScreen">
+    <div class="error-icon">⚠️</div>
+    <h2 id="errorTitle">Connection Failed</h2>
+    <p id="errorDetail">Unable to reach your URL library. Check your network or Apps Script URL.</p>
+    <button class="btn btn-outline" onclick="retryInit()">↺ Try Again</button>
+  </div>
+
+  <!-- ── MAIN APP ── -->
+  <div id="app">
+    <div class="card">
+      <div class="card-bar"></div>
+
+      <div class="card-head">
+        <div class="card-head-text">
+          <h1>App Viewer</h1>
+          <p>Pick a saved URL or add a new one below.</p>
+        </div>
+        <!-- FIX: Refresh button to reload list without full page reload -->
+        <button id="refreshBtn" onclick="refreshList()" title="Refresh URL list">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <polyline points="1 20 1 14 7 14"></polyline>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+          </svg>
+        </button>
+      </div>
+
+      <div class="card-body">
+
+        <!-- Dropdown + Delete button -->
+        <div class="field">
+          <span class="field-label">
+            Saved URLs
+            <span class="url-count" id="urlCount">0</span>
+          </span>
+          <div class="select-action-row">
+            <div class="select-wrap">
+              <select id="urlSelect" onchange="onSelectChange()">
+                <option value="">— Choose a URL —</option>
+              </select>
+            </div>
+            <!-- FIX: Delete button to remove selected URL from sheet -->
+            <button class="btn btn-danger" id="deleteBtn" onclick="deleteSelected()" disabled title="Remove selected URL">
+              <span id="deleteBtnText">✕</span>
+              <div class="btn-spin light" id="deleteSpin"></div>
+            </button>
+          </div>
+        </div>
+
+        <!-- Open button — FIX: opens in new tab, not replace -->
+        <button class="btn btn-primary" id="openBtn" onclick="openSelected()" disabled>
+          <span id="openBtnText">↗ Open in New Tab</span>
+          <div class="btn-spin" id="openSpin"></div>
+        </button>
+
+        <div class="divider">or add new</div>
+
+        <!-- New URL input -->
+        <div class="field">
+          <span class="field-label">New URL</span>
+          <div class="url-row">
+            <input
+              type="text"
+              id="newUrl"
+              placeholder="https://example.com"
+              autocomplete="off"
+              spellcheck="false"
+              autocorrect="off"
+              autocapitalize="none"
+            />
+            <button class="btn btn-outline" id="validateBtn" onclick="validateAndAdd()">
+              <span id="validateBtnText">Validate &amp; Add</span>
+              <div class="btn-spin light" id="validateSpin"></div>
+            </button>
+          </div>
+        </div>
+
+        <!-- Status message -->
+        <div id="status"></div>
+
+      </div><!-- /card-body -->
+
+      <div class="card-foot">
+        URLs are validated server-side before saving · Opens in a new tab
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ══════════════════════════════════════════════════════════
+       ▼▼▼  PASTE YOUR APPS SCRIPT DEPLOYMENT URL BELOW  ▼▼▼
+    ══════════════════════════════════════════════════════════ */
+    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxLRY6mU0LE4jAAIWuv_heFlAUfWaxNtKwAufrva5SBzO3pIzIgGI2uwb2qJP5hXoMP/exec';
+    /* ══════════════════════════════════════════════════════════
+       ▲▲▲  ONLY THIS LINE NEEDS TO BE CHANGED  ▲▲▲
+    ══════════════════════════════════════════════════════════ */
+
+    /* FIX: Increased timeout so slow Apps Script cold starts don't fail silently */
+    const FETCH_TIMEOUT_MS = 15000;
+
+    let savedUrls = [];
+
+    /* ─────────────────────────────────────────
+       FETCH WITH TIMEOUT HELPER
+       FIX: Prevents hanging requests
+    ───────────────────────────────────────── */
+    function fetchWithTimeout(url, options = {}) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+      return fetch(url, { ...options, signal: controller.signal, redirect: 'follow' })
+        .finally(() => clearTimeout(timer));
+    }
+
+    /* ─────────────────────────────────────────
+       INIT
+    ───────────────────────────────────────── */
+    function init() {
+      if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL.includes('YOUR_DEPLOYMENT_ID')) {
+        showError(
+          'Setup Required',
+          'Open AppViewer.html in a text editor and paste your Apps Script deployment URL where indicated.'
+        );
+        return;
+      }
+
+      if (!navigator.onLine) {
+        showError('No Internet', 'You are offline. Please check your connection and try again.');
+        return;
+      }
+
+      showLoader('Connecting to your library…');
+      loadUrls();
+    }
+
+    function retryInit() {
+      hideError();
+      showLoader('Reconnecting…');
+      setTimeout(init, 300);
+    }
+
+    /* ─────────────────────────────────────────
+       FETCH URLS FROM APPS SCRIPT
+    ───────────────────────────────────────── */
+    function loadUrls(isRefresh = false) {
+      const url = APPS_SCRIPT_URL + '?action=getUrls&t=' + Date.now(); // cache-bust
+
+      fetchWithTimeout(url)
+        .then(res => {
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          return res.json();
+        })
+        .then(data => {
+          if (data.error) throw new Error(data.error);
+          savedUrls = Array.isArray(data.urls) ? data.urls : [];
+          populateDropdown(savedUrls);
+          if (isRefresh) {
+            document.getElementById('refreshBtn').classList.remove('spinning');
+            document.getElementById('refreshBtn').disabled = false;
+            showStatus('List refreshed — ' + savedUrls.length + ' URL(s) loaded.', 'success');
+            setTimeout(clearStatus, 3000);
+          } else {
+            showApp();
+          }
+        })
+        .catch(err => {
+          const msg = err.name === 'AbortError'
+            ? 'Request timed out. The Apps Script may be slow to start — please try again.'
+            : 'Error: ' + err.message + '. Check your deployment URL and sheet permissions.';
+          if (isRefresh) {
+            document.getElementById('refreshBtn').classList.remove('spinning');
+            document.getElementById('refreshBtn').disabled = false;
+            showStatus(msg, 'error');
+          } else {
+            showError('Could Not Load URLs', msg);
+          }
+        });
+    }
+
+    /* ─────────────────────────────────────────
+       REFRESH LIST (without full reload)
+    ───────────────────────────────────────── */
+    function refreshList() {
+      if (!navigator.onLine) {
+        showStatus('You are offline.', 'error');
+        return;
+      }
+      clearStatus();
+      const btn = document.getElementById('refreshBtn');
+      btn.disabled = true;
+      btn.classList.add('spinning');
+      loadUrls(true);
+    }
+
+    /* ─────────────────────────────────────────
+       DROPDOWN
+    ───────────────────────────────────────── */
+    function populateDropdown(urls) {
+      const sel = document.getElementById('urlSelect');
+      const prevVal = sel.value; // preserve selection if possible
+      sel.innerHTML = '<option value="">— Choose a URL —</option>';
+
+      if (urls.length === 0) {
+        const opt = document.createElement('option');
+        opt.disabled = true;
+        opt.textContent = '(No saved URLs yet — add one below)';
+        sel.appendChild(opt);
+      } else {
+        urls.forEach(url => {
+          const opt = document.createElement('option');
+          opt.value = url;
+          opt.textContent = url.length > 60 ? url.slice(0, 57) + '…' : url;
+          opt.title = url;
+          sel.appendChild(opt);
+        });
+        // Restore previous selection if it still exists
+        if (prevVal && urls.includes(prevVal)) {
+          sel.value = prevVal;
+        }
+      }
+
+      document.getElementById('urlCount').textContent = urls.length;
+      onSelectChange();
+    }
+
+    function onSelectChange() {
+      const val = document.getElementById('urlSelect').value;
+      document.getElementById('openBtn').disabled = !val;
+      document.getElementById('deleteBtn').disabled = !val;
+      clearStatus();
+    }
+
+    /* ─────────────────────────────────────────
+       OPEN SELECTED URL
+       FIX: Opens in a new tab instead of replacing the page.
+            Using window.location.replace() destroyed the app session.
+    ───────────────────────────────────────── */
+    function openSelected() {
+      const url = document.getElementById('urlSelect').value;
+      if (!url) return;
+
+      if (!navigator.onLine) {
+        showStatus('No Internet Connection.', 'error');
+        return;
+      }
+
+      // Brief visual feedback then open
+      setLoading('openBtn', 'openBtnText', 'openSpin', true, 'Opening…');
+      clearStatus();
+
+      setTimeout(() => {
+        const opened = window.open(url, '_blank', 'noopener,noreferrer');
+        setLoading('openBtn', 'openBtnText', 'openSpin', false, '↗ Open in New Tab');
+        if (!opened) {
+          // Popup blocked fallback
+          showStatus('Popup was blocked. Please allow popups for this page, or click OK in the popup blocker bar.', 'warn');
+        }
+      }, 200);
+    }
+
+    /* ─────────────────────────────────────────
+       DELETE SELECTED URL
+       FIX: New feature — removes URL from sheet
+    ───────────────────────────────────────── */
+    function deleteSelected() {
+      const url = document.getElementById('urlSelect').value;
+      if (!url) return;
+
+      if (!navigator.onLine) {
+        showStatus('No Internet Connection.', 'error');
+        return;
+      }
+
+      if (!confirm('Remove this URL from your saved list?\n\n' + url)) return;
+
+      setLoading('deleteBtn', 'deleteBtnText', 'deleteSpin', true, '');
+      clearStatus();
+      showStatus('Removing URL…', 'info');
+
+      const endpoint = APPS_SCRIPT_URL
+        + '?action=deleteUrl'
+        + '&url=' + encodeURIComponent(url);
+
+      fetchWithTimeout(endpoint)
+        .then(res => {
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          return res.json();
+        })
+        .then(data => {
+          setLoading('deleteBtn', 'deleteBtnText', 'deleteSpin', false, '✕');
+          if (data.success) {
+            savedUrls = savedUrls.filter(u => u !== url);
+            populateDropdown(savedUrls);
+            showStatus('URL removed from your list.', 'success');
+            setTimeout(clearStatus, 3000);
+          } else {
+            showStatus('✗ ' + (data.message || 'Could not delete URL.'), 'error');
+          }
+        })
+        .catch(err => {
+          setLoading('deleteBtn', 'deleteBtnText', 'deleteSpin', false, '✕');
+          const msg = err.name === 'AbortError'
+            ? 'Request timed out. Please try again.'
+            : 'Request failed: ' + err.message;
+          showStatus(msg, 'error');
+        });
+    }
+
+    /* ─────────────────────────────────────────
+       VALIDATE & ADD NEW URL
+    ───────────────────────────────────────── */
+    function validateAndAdd() {
+      let raw = document.getElementById('newUrl').value.trim();
+
+      if (!raw) {
+        showStatus('Please enter a URL first.', 'warn');
+        document.getElementById('newUrl').focus();
+        return;
+      }
+
+      // Auto-prepend https:// if missing
+      if (!/^https?:\/\//i.test(raw)) raw = 'https://' + raw;
+
+      // Client-side format check
+      if (!isValidUrlFormat(raw)) {
+        showStatus('Invalid URL format. Example: https://example.com', 'error');
+        document.getElementById('newUrl').focus();
+        return;
+      }
+
+      if (!navigator.onLine) {
+        showStatus('No Internet Connection. Cannot validate URL.', 'error');
+        return;
+      }
+
+      // Client-side duplicate check
+      const norm = u => u.replace(/\/+$/, '').toLowerCase();
+      const dupe = savedUrls.find(u => norm(u) === norm(raw));
+      if (dupe) {
+        showStatus('This URL is already in your saved list.', 'warn');
+        document.getElementById('urlSelect').value = dupe;
+        onSelectChange();
+        return;
+      }
+
+      setLoading('validateBtn', 'validateBtnText', 'validateSpin', true, 'Validating…');
+      showStatus('Checking if the URL is reachable…', 'info');
+
+      const endpoint = APPS_SCRIPT_URL
+        + '?action=validateAndSave'
+        + '&url=' + encodeURIComponent(raw);
+
+      fetchWithTimeout(endpoint)
+        .then(res => {
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          return res.json();
+        })
+        .then(data => {
+          setLoading('validateBtn', 'validateBtnText', 'validateSpin', false, 'Validate &amp; Add');
+
+          if (data.success) {
+            // FIX: Open in new tab, do NOT replace the page
+            const savedUrl = data.url || raw;
+            if (!savedUrls.includes(savedUrl)) {
+              savedUrls.push(savedUrl);
+              populateDropdown(savedUrls);
+            }
+            document.getElementById('urlSelect').value = savedUrl;
+            onSelectChange();
+            document.getElementById('newUrl').value = '';
+            showStatus('✓ URL saved! Opening in new tab…', 'success');
+
+            setTimeout(() => {
+              const opened = window.open(savedUrl, '_blank', 'noopener,noreferrer');
+              if (!opened) {
+                showStatus('✓ URL saved. Popup was blocked — click "↗ Open in New Tab" to open it.', 'warn');
+              } else {
+                clearStatus();
+              }
+            }, 800);
+
+          } else {
+            showStatus('✗ ' + (data.message || 'URL could not be validated.'), 'error');
+          }
+        })
+        .catch(err => {
+          setLoading('validateBtn', 'validateBtnText', 'validateSpin', false, 'Validate &amp; Add');
+          const msg = err.name === 'AbortError'
+            ? 'Request timed out. Apps Script may be slow — please try again.'
+            : 'Request failed: ' + err.message;
+          showStatus(msg, 'error');
+        });
+    }
+
+    /* ─────────────────────────────────────────
+       HELPERS
+    ───────────────────────────────────────── */
+    function isValidUrlFormat(str) {
+      try {
+        const u = new URL(str);
+        return u.protocol === 'http:' || u.protocol === 'https:';
+      } catch (_) { return false; }
+    }
+
+    function showStatus(msg, type) {
+      const el = document.getElementById('status');
+      el.textContent = msg;
+      el.className = type;
+      el.style.display = 'block';
+    }
+
+    function clearStatus() {
+      const el = document.getElementById('status');
+      el.style.display = 'none';
+      el.className = '';
+      el.textContent = '';
+    }
+
+    function setLoading(btnId, txtId, spinId, on, label) {
+      document.getElementById(btnId).disabled = on;
+      document.getElementById(txtId).innerHTML = label;
+      document.getElementById(spinId).style.display = on ? 'block' : 'none';
+    }
+
+    function showLoader(msg) {
+      document.getElementById('loaderMsg').textContent = msg || 'Loading…';
+      document.getElementById('loader').classList.remove('hidden');
+      document.getElementById('app').classList.remove('visible');
+      document.getElementById('errorScreen').classList.remove('visible');
+    }
+
+    function showApp() {
+      document.getElementById('loader').classList.add('hidden');
+      document.getElementById('app').classList.add('visible');
+      document.getElementById('errorScreen').classList.remove('visible');
+    }
+
+    function showError(title, detail) {
+      document.getElementById('loader').classList.add('hidden');
+      document.getElementById('app').classList.remove('visible');
+      document.getElementById('errorTitle').textContent  = title;
+      document.getElementById('errorDetail').textContent = detail;
+      document.getElementById('errorScreen').classList.add('visible');
+    }
+
+    function hideError() {
+      document.getElementById('errorScreen').classList.remove('visible');
+    }
+
+    /* Enter key in URL input triggers validation */
+    document.getElementById('newUrl').addEventListener('keydown', e => {
+      if (e.key === 'Enter') validateAndAdd();
+    });
+
+    /* ─────────────────────────────────────────
+       BOOT
+    ───────────────────────────────────────── */
+    window.addEventListener('load', init);
+    window.addEventListener('online', () => {
+      if (!document.getElementById('app').classList.contains('visible')) retryInit();
+    });
+  </script>
+</body>
+</html>
