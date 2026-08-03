@@ -1446,15 +1446,23 @@
     }
 
     /* ── SEARCH ── */
+    let searchDebounceTimer = null;
     function onSearch() {
       currentFilter = document.getElementById('searchInput').value;
       document.getElementById('searchClear').classList.toggle('visible', currentFilter.length > 0);
-      renderCards();
+      /* ✅ Debounced: renderCards() rebuilds every card + listener in the list.
+         Running that on every single keystroke is what was causing dropped/
+         laggy characters while typing (search box, and tag/order inputs if a
+         rebuild landed while a card menu was open). Wait for a short pause
+         in typing instead of rebuilding on every character. */
+      clearTimeout(searchDebounceTimer);
+      searchDebounceTimer = setTimeout(renderCards, 150);
     }
     function clearSearch() {
       document.getElementById('searchInput').value = ''; currentFilter = '';
       document.getElementById('searchClear').classList.remove('visible');
       document.getElementById('searchInput').focus();
+      clearTimeout(searchDebounceTimer);
       renderCards();
     }
 
