@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
-  <title>App Viewer</title>
+  <title>App Viewer — Secure Launcher</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -666,16 +666,62 @@
     .io-status.success { display:block; background:var(--st-ok-bg); color:var(--st-ok-c); border:2px solid var(--st-ok-b); }
     .io-status.error   { display:block; background:var(--st-er-bg); color:var(--st-er-c); border:2px solid var(--st-er-b); }
     .io-status.info    { display:block; background:var(--st-in-bg); color:var(--st-in-c); border:2px solid var(--st-in-b); }
+
+
+    /* ── Reliability, accessibility, and small-screen hardening ── */
+    html { color-scheme: dark light; }
+    body {
+      align-items: flex-start;
+      overscroll-behavior-y: contain;
+      padding-top: max(20px, env(safe-area-inset-top));
+      padding-bottom: max(28px, env(safe-area-inset-bottom));
+    }
+    button, input { touch-action: manipulation; }
+    button { min-height: 40px; }
+    :focus-visible {
+      outline: 3px solid var(--input-focus-c);
+      outline-offset: 3px;
+    }
+    .app-list-wrap { max-height: min(340px, 42vh); }
+    .settings-panel {
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    .settings-overlay[aria-hidden="true"] { pointer-events: none; }
+
+    @media (min-height: 900px) and (min-width: 560px) {
+      body { align-items: center; }
+    }
+    @media (max-width: 420px) {
+      body { padding-left: 10px; padding-right: 10px; }
+      .header-card { padding: 19px 17px 16px; border-radius: 18px; }
+      .header-title { font-size: 23px; }
+      .card-sec { padding: 17px; }
+      .app-list-wrap { margin-left: -17px; margin-right: -17px; padding-left: 17px; padding-right: 17px; }
+      .action-row { gap: 8px; }
+      .btn { padding-left: 15px; padding-right: 15px; }
+      .url-row { align-items: stretch; }
+      .btn-add { min-width: 70px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+
   </style>
 </head>
 <body>
 
   <!-- SETTINGS OVERLAY + PANEL -->
   <div class="settings-overlay" id="settingsOverlay" onclick="closeSettings()"></div>
-  <div class="settings-panel" id="settingsPanel">
+  <div class="settings-panel" id="settingsPanel" role="dialog" aria-modal="true" aria-labelledby="settingsTitle" aria-hidden="true">
     <div class="sp-head">
-      <div class="sp-title">⚙️ Settings</div>
-      <button class="sp-close" onclick="closeSettings()">✕</button>
+      <div class="sp-title" id="settingsTitle">⚙️ Settings</div>
+      <button type="button" class="sp-close" onclick="closeSettings()" aria-label="Close settings">✕</button>
     </div>
     <div class="sp-body">
 
@@ -684,7 +730,7 @@
         <div class="sp-section-label">🎨 Color Theme</div>
         <div class="theme-cards">
 
-          <div class="theme-card" data-t="dark" onclick="setTheme('dark')">
+          <div class="theme-card" data-t="dark" role="button" tabindex="0" aria-pressed="false" onclick="setTheme('dark')">
             <div class="theme-card-preview tc-dark">
               <div class="tc-dots">
                 <div class="tc-dot" style="background:#818cf8"></div>
@@ -698,7 +744,7 @@
             </div>
           </div>
 
-          <div class="theme-card" data-t="forest" onclick="setTheme('forest')">
+          <div class="theme-card" data-t="forest" role="button" tabindex="0" aria-pressed="false" onclick="setTheme('forest')">
             <div class="theme-card-preview tc-forest">
               <div class="tc-dots">
                 <div class="tc-dot" style="background:#b7e4c7"></div>
@@ -712,7 +758,7 @@
             </div>
           </div>
 
-          <div class="theme-card" data-t="ocean" onclick="setTheme('ocean')">
+          <div class="theme-card" data-t="ocean" role="button" tabindex="0" aria-pressed="false" onclick="setTheme('ocean')">
             <div class="theme-card-preview tc-ocean">
               <div class="tc-dots">
                 <div class="tc-dot" style="background:#90e0ef"></div>
@@ -726,7 +772,7 @@
             </div>
           </div>
 
-          <div class="theme-card" data-t="candy" onclick="setTheme('candy')">
+          <div class="theme-card" data-t="candy" role="button" tabindex="0" aria-pressed="false" onclick="setTheme('candy')">
             <div class="theme-card-preview tc-candy">
               <div class="tc-dots">
                 <div class="tc-dot" style="background:#f8bbd0"></div>
@@ -798,11 +844,11 @@
   <!-- LOADER -->
   <div id="loader">
     <div class="loader-blob"></div>
-    <span id="loaderMsg">Loading your apps…</span>
+    <span id="loaderMsg" role="status" aria-live="polite">Loading your apps…</span>
   </div>
 
   <!-- ERROR -->
-  <div id="errorScreen">
+  <div id="errorScreen" role="alert" aria-live="assertive">
     <div style="font-size:42px">😵</div>
     <h2 id="errorTitle">Connection Failed</h2>
     <p id="errorDetail">Unable to reach your URL library.</p>
@@ -819,13 +865,13 @@
           <div class="header-sub">Pick an app and launch it!</div>
         </div>
         <div class="header-btns">
-          <button class="hbtn" onclick="openSettings()" title="Settings">
+          <button type="button" class="hbtn" id="settingsBtn" onclick="openSettings()" title="Settings" aria-label="Open settings" aria-controls="settingsPanel" aria-expanded="false">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="3"></circle>
               <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
             </svg>
           </button>
-          <button class="hbtn" id="refreshBtn" onclick="refreshList()" title="Refresh list">
+          <button type="button" class="hbtn" id="refreshBtn" onclick="refreshList()" title="Refresh list" aria-label="Refresh app list">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline>
               <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
@@ -844,7 +890,7 @@
       </div>
       <div class="tag-filter-panel" id="tagFilterPanel"></div>
       <!-- ✅ NEW: Sync indicator badge -->
-      <div id="syncBadge">
+      <div id="syncBadge" role="status" aria-live="polite">
         <div class="sync-spin"></div>
         <span>Syncing…</span>
       </div>
@@ -887,20 +933,20 @@
       </div>
 
       <div style="padding:0 22px;">
-        <div id="status" style="margin-bottom:16px;"></div>
+        <div id="status" role="status" aria-live="polite" style="margin-bottom:16px;"></div>
       </div>
 
       <div class="card-sec">
         <div class="divider" style="margin-bottom:18px;">✨ add new app</div>
         <div style="margin-bottom:12px;">
           <label class="field-label" for="newTitle">App Name</label>
-          <input type="text" id="newTitle" class="hi" placeholder="My Awesome App"
+          <input type="text" id="newTitle" class="hi" placeholder="My Awesome App" maxlength="100"
             autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="words" />
         </div>
         <div>
           <label class="field-label" for="newUrl">URL</label>
           <div class="url-row">
-            <input type="text" id="newUrl" class="hi" placeholder="https://example.com"
+            <input type="url" id="newUrl" class="hi" placeholder="https://example.com" maxlength="2048" inputmode="url"
               autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="none" />
             <button class="btn btn-add" id="validateBtn" onclick="validateAndAdd()">
               <span id="validateBtnText">Add</span>
@@ -916,265 +962,44 @@
   </div><!-- /#app -->
 
   <script>
-    /* ══════════════════════════════════════════════════════════
-       ▼▼▼  PASTE YOUR APPS SCRIPT DEPLOYMENT URL BELOW  ▼▼▼
-    ══════════════════════════════════════════════════════════ */
+    'use strict';
+
+    /* Google Apps Script backend currently used by this file. */
     const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxLRY6mU0LE4jAAIWuv_heFlAUfWaxNtKwAufrva5SBzO3pIzIgGI2uwb2qJP5hXoMP/exec';
-    /* ══════════════════════════════════════════════════════════
-       ▲▲▲  ONLY THIS LINE NEEDS TO BE CHANGED  ▲▲▲
-    ══════════════════════════════════════════════════════════ */
 
-    /* ✅ FIX 2: Reduced from 15000 to 8000ms — GAS responds in 3–5s or it's failing */
-    const FETCH_TIMEOUT_MS = 8000;
+    const FETCH_TIMEOUT_MS = 20000;
     const CACHE_KEY = 'av_entries_cache';
-    const META_KEY  = 'av_entry_meta';
+    const META_KEY = 'av_entry_meta';
+    const THEME_KEY = 'av_theme';
+    const MAX_ENTRIES = 1000;
+    const MAX_IMPORT_BYTES = 1024 * 1024;
+    const MAX_TAGS_PER_APP = 12;
+    const MAX_TAG_LENGTH = 24;
 
-    let savedEntries = [], selectedUrl = '', currentFilter = '';
-    let entryMeta = {}, showHidden = false;
+    let savedEntries = [];
+    let selectedUrl = '';
+    let currentFilter = '';
+    let entryMeta = Object.create(null);
+    let showHidden = false;
     let openMenus = new Set();
-    let activeTagFilters = new Set(), tagFilterPanelOpen = false;
+    let activeTagFilters = new Set();
+    let tagFilterPanelOpen = false;
+    let searchDebounceTimer = null;
+    let retryTimer = null;
+    let refreshController = null;
+    let mutationController = null;
+    let refreshSequence = 0;
+    let refreshInFlight = false;
+    let busyAction = false;
+    let previousFocus = null;
 
-    /* ── PER-ITEM META (pin / hide / manual priority / timestamps / tags) ──
-       Stored separately from savedEntries so it survives server refreshes,
-       keyed by URL: { pinned, hidden, order, addedAt, lastOpened, tags } */
-    function loadMeta() {
-      try { entryMeta = JSON.parse(localStorage.getItem(META_KEY)) || {}; }
-      catch (e) { entryMeta = {}; }
-    }
-    function saveMeta() {
-      try { localStorage.setItem(META_KEY, JSON.stringify(entryMeta)); } catch (e) {}
-    }
-    function getMeta(url) {
-      const m = entryMeta[url];
-      return m || { pinned: false, hidden: false, order: null, addedAt: 0, lastOpened: 0, tags: [] };
-    }
-    /* Keeps entryMeta in sync with savedEntries: creates defaults for new
-       urls (using their list position as a fallback "added" rank so legacy
-       rows keep a stable relative order) and prunes deleted urls. */
-    function syncMetaWithEntries(entries) {
-      let changed = false;
-      entries.forEach((e, i) => {
-        if (!entryMeta[e.url]) {
-          entryMeta[e.url] = { pinned: false, hidden: false, order: null, addedAt: i, lastOpened: 0, tags: [] };
-          changed = true;
-        } else if (!Array.isArray(entryMeta[e.url].tags)) {
-          entryMeta[e.url].tags = [];
-          changed = true;
-        }
-      });
-      const urlSet = new Set(entries.map(e => e.url));
-      Object.keys(entryMeta).forEach(u => {
-        if (!urlSet.has(u)) { delete entryMeta[u]; changed = true; }
-      });
-      if (changed) saveMeta();
-    }
-    /* Combined priority sort:
-       1) pinned items first
-       2) manually-numbered items (lower # = higher priority)
-       3) most-recently-opened first
-       4) newest-added first */
-    function sortEntries(list) {
-      return list.slice().sort((a, b) => {
-        const ma = getMeta(a.url), mb = getMeta(b.url);
-        if (ma.pinned !== mb.pinned) return ma.pinned ? -1 : 1;
-
-        const aHas = ma.order !== null && ma.order !== undefined && ma.order !== '';
-        const bHas = mb.order !== null && mb.order !== undefined && mb.order !== '';
-        if (aHas && bHas) { if (ma.order !== mb.order) return ma.order - mb.order; }
-        else if (aHas !== bHas) return aHas ? -1 : 1;
-
-        const aOpened = ma.lastOpened || 0, bOpened = mb.lastOpened || 0;
-        if (aOpened !== bOpened) return bOpened - aOpened;
-
-        const aAdded = ma.addedAt || 0, bAdded = mb.addedAt || 0;
-        if (aAdded !== bAdded) return bAdded - aAdded;
-        return 0;
-      });
-    }
-    function togglePin(url) {
-      const m = getMeta(url);
-      entryMeta[url] = { ...m, pinned: !m.pinned };
-      saveMeta(); renderCards();
-    }
-    function toggleHide(url) {
-      const m = getMeta(url);
-      entryMeta[url] = { ...m, hidden: !m.hidden };
-      if (entryMeta[url].hidden && selectedUrl === url) selectedUrl = '';
-      saveMeta(); renderCards();
-    }
-    function setOrder(url, val) {
-      const n = val === '' ? null : parseInt(val, 10);
-      const m = getMeta(url);
-      entryMeta[url] = { ...m, order: (n === null || isNaN(n)) ? null : n };
-      saveMeta(); renderCards();
-    }
-    function toggleShowHidden() { showHidden = !showHidden; renderCards(); }
-
-    /* ── TAGS ── */
-    function addTag(url, rawTag) {
-      const tag = (rawTag || '').trim();
-      if (!tag) return;
-      const m = getMeta(url);
-      const tags = Array.isArray(m.tags) ? m.tags.slice() : [];
-      if (!tags.some(t => t.toLowerCase() === tag.toLowerCase())) tags.push(tag);
-      entryMeta[url] = { ...m, tags };
-      saveMeta(); renderCards();
-    }
-    function removeTag(url, tag) {
-      const m = getMeta(url);
-      const tags = (m.tags || []).filter(t => t !== tag);
-      entryMeta[url] = { ...m, tags };
-      saveMeta(); renderCards();
-    }
-    function getAllTags() {
-      const set = new Set();
-      savedEntries.forEach(e => (getMeta(e.url).tags || []).forEach(t => set.add(t)));
-      return Array.from(set).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
-    }
-    function toggleTagFilterPanel() {
-      tagFilterPanelOpen = !tagFilterPanelOpen;
-      renderTagFilterPanel();
-    }
-    function renderTagFilterPanel() {
-      const panel = document.getElementById('tagFilterPanel');
-      const btn = document.getElementById('tagFilterBtn');
-      const label = document.getElementById('tagFilterLabel');
-      const allTags = getAllTags();
-
-      panel.classList.toggle('open', tagFilterPanelOpen);
-      btn.classList.toggle('active', activeTagFilters.size > 0);
-      label.textContent = activeTagFilters.size > 0 ? 'Tags · ' + activeTagFilters.size : 'Tags';
-
-      if (!tagFilterPanelOpen) return;
-
-      if (!allTags.length) {
-        panel.innerHTML = `<span class="tag-filter-empty">No tags yet — add one from a card's ⋮ menu.</span>`;
-        return;
-      }
-      panel.innerHTML = allTags.map(t =>
-        `<button type="button" class="tag-filter-chip${activeTagFilters.has(t) ? ' active' : ''}" data-tag="${esc(t)}">${esc(t)}</button>`
-      ).join('') + (activeTagFilters.size
-        ? `<button type="button" class="tag-filter-clear" id="tagFilterClearBtn">Clear</button>` : '');
-
-      panel.querySelectorAll('.tag-filter-chip').forEach(chip => {
-        chip.addEventListener('click', () => {
-          const t = chip.dataset.tag;
-          if (activeTagFilters.has(t)) activeTagFilters.delete(t); else activeTagFilters.add(t);
-          renderTagFilterPanel(); renderCards();
-        });
-      });
-      const clearBtn = document.getElementById('tagFilterClearBtn');
-      if (clearBtn) clearBtn.addEventListener('click', () => {
-        activeTagFilters.clear(); renderTagFilterPanel(); renderCards();
-      });
-    }
-    loadMeta();
-
-    /* ── EXPORT / IMPORT (tags, pins, hidden, priority #s) ── */
-    function showMetaIOStatus(msg, type) {
-      const el = document.getElementById('metaIOStatus');
-      if (!el) return;
-      el.textContent = msg; el.className = 'io-status ' + type;
-      clearTimeout(showMetaIOStatus._t);
-      showMetaIOStatus._t = setTimeout(() => { el.className = 'io-status'; }, 5000);
-    }
-
-    function exportMeta() {
-      try {
-        const payload = {
-          type: 'appviewer-org-data',
-          version: 1,
-          exportedAt: new Date().toISOString(),
-          meta: entryMeta
-        };
-        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        const stamp = new Date().toISOString().slice(0, 10);
-        a.href = url; a.download = 'appviewer-tags-pins-' + stamp + '.json';
-        document.body.appendChild(a); a.click(); document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        showMetaIOStatus('✓ Exported ' + Object.keys(entryMeta).length + ' item(s).', 'success');
-      } catch (e) {
-        showMetaIOStatus('✗ Export failed: ' + e.message, 'error');
-      }
-    }
-
-    function importMetaFile(event) {
-      const file = event.target.files && event.target.files[0];
-      event.target.value = ''; // allow re-selecting the same file later
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = () => {
-        try {
-          const parsed = JSON.parse(reader.result);
-          const incoming = (parsed && typeof parsed === 'object' && !Array.isArray(parsed) && parsed.meta && typeof parsed.meta === 'object')
-            ? parsed.meta
-            : parsed; // also accept a raw {url: meta} object
-          if (!incoming || typeof incoming !== 'object' || Array.isArray(incoming)) {
-            throw new Error('Unrecognized file format.');
-          }
-          let count = 0;
-          Object.keys(incoming).forEach(url => {
-            const src = incoming[url] || {};
-            const existing = getMeta(url);
-            entryMeta[url] = {
-              pinned:     typeof src.pinned === 'boolean' ? src.pinned : existing.pinned,
-              hidden:     typeof src.hidden === 'boolean' ? src.hidden : existing.hidden,
-              order:      (src.order === null || typeof src.order === 'number') ? src.order : existing.order,
-              addedAt:    typeof src.addedAt === 'number' ? src.addedAt : existing.addedAt,
-              lastOpened: typeof src.lastOpened === 'number' ? src.lastOpened : existing.lastOpened,
-              tags:       Array.isArray(src.tags) ? src.tags.filter(t => typeof t === 'string') : existing.tags
-            };
-            count++;
-          });
-          saveMeta();
-          renderCards();
-          showMetaIOStatus('✓ Imported organization data for ' + count + ' item(s).', 'success');
-        } catch (e) {
-          showMetaIOStatus('✗ Import failed: ' + (e.message || 'Invalid JSON file.'), 'error');
-        }
-      };
-      reader.onerror = () => showMetaIOStatus('✗ Could not read the file.', 'error');
-      reader.readAsText(file);
-    }
-
-    /* ── SETTINGS PANEL ── */
-    function openSettings() {
-      document.getElementById('settingsOverlay').classList.add('open');
-      document.getElementById('settingsPanel').classList.add('open');
-    }
-    function closeSettings() {
-      document.getElementById('settingsOverlay').classList.remove('open');
-      document.getElementById('settingsPanel').classList.remove('open');
-    }
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSettings(); });
-
-    /* ── THEME ENGINE ── */
+    const THEMES = new Set(['dark', 'forest', 'ocean', 'candy']);
     const THEME_TITLES = {
-      dark:   '🌙 App Viewer',
+      dark: '🌙 App Viewer',
       forest: '🌿 App Viewer',
-      ocean:  '🌊 App Viewer',
-      candy:  '🍬 App Viewer',
+      ocean: '🌊 App Viewer',
+      candy: '🍬 App Viewer'
     };
-
-    function setTheme(t) {
-      document.documentElement.setAttribute('data-theme', t);
-      localStorage.setItem('av_theme', t);
-      document.querySelectorAll('.theme-card').forEach(el => el.classList.toggle('active', el.dataset.t === t));
-      document.getElementById('headerTitle').textContent = THEME_TITLES[t] || '🚀 App Viewer';
-    }
-
-    /* Boot theme */
-    (function () {
-      const saved = localStorage.getItem('av_theme') || 'dark';
-      document.documentElement.setAttribute('data-theme', saved);
-      document.querySelectorAll('.theme-card').forEach(el => el.classList.toggle('active', el.dataset.t === saved));
-      const titleEl = document.getElementById('headerTitle');
-      if (titleEl) titleEl.textContent = THEME_TITLES[saved] || '🚀 App Viewer';
-    })();
-
-    /* ── APP ICON COLORS ── */
     const ICON_COLORS = [
       'linear-gradient(135deg,#ff6b6b,#ffa94d)',
       'linear-gradient(135deg,#4dabf7,#748ffc)',
@@ -1182,120 +1007,571 @@
       'linear-gradient(135deg,#cc5de8,#f783ac)',
       'linear-gradient(135deg,#f783ac,#ff6b6b)',
       'linear-gradient(135deg,#ffa94d,#ffe066)',
-      'linear-gradient(135deg,#38d9a9,#4dabf7)',
+      'linear-gradient(135deg,#38d9a9,#4dabf7)'
     ];
-    function iconText(t) {
-      const w = t.trim().split(/\s+/);
-      return w.length >= 2 ? (w[0][0] + w[1][0]).toUpperCase() : t.slice(0, 2).toUpperCase();
+
+    function storageGet(key, fallback = null) {
+      try {
+        const value = localStorage.getItem(key);
+        return value === null ? fallback : value;
+      } catch (_) {
+        return fallback;
+      }
     }
 
-    /* ── FETCH ── */
-    function fetchWithTimeout(url, opts = {}) {
-      const c = new AbortController(), timer = setTimeout(() => c.abort(), FETCH_TIMEOUT_MS);
-      return fetch(url, { ...opts, signal: c.signal, redirect: 'follow' }).finally(() => clearTimeout(timer));
+    function storageSet(key, value) {
+      try {
+        localStorage.setItem(key, value);
+        return true;
+      } catch (_) {
+        return false;
+      }
     }
 
-    /* ── SYNC BADGE ── */
+    function storageRemove(key) {
+      try { localStorage.removeItem(key); } catch (_) {}
+    }
+
+    function parseJson(text, fallback = null) {
+      try { return JSON.parse(text); } catch (_) { return fallback; }
+    }
+
+    function esc(value) {
+      return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function normalizeHttpUrl(raw) {
+      let value = String(raw ?? '').trim();
+      if (!value) throw new Error('URL is required.');
+      if (value.length > 2048) throw new Error('URL is too long.');
+      if (!/^[a-zA-Z][a-zA-Z\d+.-]*:/.test(value)) value = 'https://' + value;
+
+      let parsed;
+      try { parsed = new URL(value); }
+      catch (_) { throw new Error('Enter a valid website URL.'); }
+
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+        throw new Error('Only http:// and https:// links are allowed.');
+      }
+      if (parsed.username || parsed.password) {
+        throw new Error('URLs containing usernames or passwords are not allowed.');
+      }
+      if (!parsed.hostname) throw new Error('The URL must include a website address.');
+      return parsed.href;
+    }
+
+    function cleanTitle(raw) {
+      return String(raw ?? '').replace(/[\u0000-\u001F\u007F]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 100);
+    }
+
+    function sanitizeEntry(raw) {
+      const candidate = typeof raw === 'string' ? { url: raw, title: '' } : raw;
+      if (!candidate || typeof candidate !== 'object') return null;
+      try {
+        return { url: normalizeHttpUrl(candidate.url), title: cleanTitle(candidate.title) };
+      } catch (_) {
+        return null;
+      }
+    }
+
+    function normalizeEntries(rawEntries) {
+      if (!Array.isArray(rawEntries)) return [];
+      const result = [];
+      const seen = new Set();
+      for (const raw of rawEntries.slice(0, MAX_ENTRIES)) {
+        const item = sanitizeEntry(raw);
+        if (!item || seen.has(item.url)) continue;
+        seen.add(item.url);
+        result.push(item);
+      }
+      return result;
+    }
+
+    function emptyMeta() {
+      return { pinned: false, hidden: false, order: null, addedAt: 0, lastOpened: 0, tags: [] };
+    }
+
+    function sanitizeTag(raw) {
+      return String(raw ?? '')
+        .replace(/[\u0000-\u001F\u007F]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, MAX_TAG_LENGTH);
+    }
+
+    function tagKey(tag) {
+      return sanitizeTag(tag).toLocaleLowerCase();
+    }
+
+    function sanitizeMetaRecord(raw, fallback = emptyMeta()) {
+      const src = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+      const parsedOrder = Number.isInteger(src.order) && src.order >= 1 && src.order <= 9999 ? src.order : null;
+      const tags = [];
+      const seen = new Set();
+      if (Array.isArray(src.tags)) {
+        for (const rawTag of src.tags) {
+          const tag = sanitizeTag(rawTag);
+          const key = tagKey(tag);
+          if (!tag || seen.has(key)) continue;
+          seen.add(key);
+          tags.push(tag);
+          if (tags.length >= MAX_TAGS_PER_APP) break;
+        }
+      }
+      return {
+        pinned: typeof src.pinned === 'boolean' ? src.pinned : !!fallback.pinned,
+        hidden: typeof src.hidden === 'boolean' ? src.hidden : !!fallback.hidden,
+        order: parsedOrder,
+        addedAt: Number.isFinite(src.addedAt) && src.addedAt >= 0 ? src.addedAt : (fallback.addedAt || 0),
+        lastOpened: Number.isFinite(src.lastOpened) && src.lastOpened >= 0 ? src.lastOpened : (fallback.lastOpened || 0),
+        tags
+      };
+    }
+
+    function loadMeta() {
+      entryMeta = Object.create(null);
+      const parsed = parseJson(storageGet(META_KEY, '{}'), {});
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return;
+      for (const [rawUrl, rawMeta] of Object.entries(parsed).slice(0, MAX_ENTRIES)) {
+        if (rawUrl === '__proto__' || rawUrl === 'prototype' || rawUrl === 'constructor') continue;
+        try {
+          const url = normalizeHttpUrl(rawUrl);
+          entryMeta[url] = sanitizeMetaRecord(rawMeta);
+        } catch (_) {}
+      }
+    }
+
+    function saveMeta() {
+      const plain = {};
+      for (const entry of savedEntries) plain[entry.url] = sanitizeMetaRecord(entryMeta[entry.url]);
+      entryMeta = Object.assign(Object.create(null), plain);
+      storageSet(META_KEY, JSON.stringify(plain));
+    }
+
+    function getMeta(url) {
+      return entryMeta[url] ? sanitizeMetaRecord(entryMeta[url]) : emptyMeta();
+    }
+
+    function syncMetaWithEntries(entries) {
+      const next = Object.create(null);
+      entries.forEach((entry, index) => {
+        const existing = entryMeta[entry.url];
+        next[entry.url] = sanitizeMetaRecord(existing, {
+          ...emptyMeta(),
+          addedAt: Date.now() - (entries.length - index)
+        });
+      });
+      entryMeta = next;
+      saveMeta();
+    }
+
+    function sortEntries(list) {
+      return list.slice().sort((a, b) => {
+        const ma = getMeta(a.url), mb = getMeta(b.url);
+        if (ma.pinned !== mb.pinned) return ma.pinned ? -1 : 1;
+        const aHas = Number.isInteger(ma.order), bHas = Number.isInteger(mb.order);
+        if (aHas && bHas && ma.order !== mb.order) return ma.order - mb.order;
+        if (aHas !== bHas) return aHas ? -1 : 1;
+        if (ma.lastOpened !== mb.lastOpened) return mb.lastOpened - ma.lastOpened;
+        if (ma.addedAt !== mb.addedAt) return mb.addedAt - ma.addedAt;
+        return (a.title || a.url).localeCompare(b.title || b.url, undefined, { sensitivity: 'base' });
+      });
+    }
+
+    function togglePin(url) {
+      const meta = getMeta(url);
+      entryMeta[url] = { ...meta, pinned: !meta.pinned };
+      saveMeta();
+      renderCards();
+    }
+
+    function toggleHide(url) {
+      const meta = getMeta(url);
+      entryMeta[url] = { ...meta, hidden: !meta.hidden };
+      if (entryMeta[url].hidden && selectedUrl === url) selectedUrl = '';
+      saveMeta();
+      renderCards();
+    }
+
+    function setOrder(url, rawValue) {
+      const value = String(rawValue ?? '').trim();
+      let order = null;
+      if (value) {
+        const parsed = Number(value);
+        if (!Number.isInteger(parsed) || parsed < 1 || parsed > 9999) {
+          showStatus('Priority must be a whole number from 1 to 9999.', 'warn');
+          renderCards();
+          return;
+        }
+        order = parsed;
+      }
+      entryMeta[url] = { ...getMeta(url), order };
+      saveMeta();
+      renderCards();
+    }
+
+    function toggleShowHidden() {
+      showHidden = !showHidden;
+      renderCards();
+    }
+
+    function addTag(url, rawTag) {
+      const tag = sanitizeTag(rawTag);
+      if (!tag) return;
+      const meta = getMeta(url);
+      const tags = [...meta.tags];
+      if (tags.some(existing => tagKey(existing) === tagKey(tag))) return;
+      if (tags.length >= MAX_TAGS_PER_APP) {
+        showStatus('Each app can have up to ' + MAX_TAGS_PER_APP + ' tags.', 'warn');
+        return;
+      }
+      tags.push(tag);
+      entryMeta[url] = { ...meta, tags };
+      saveMeta();
+      renderCards();
+    }
+
+    function removeTag(url, rawTag) {
+      const key = tagKey(rawTag);
+      const meta = getMeta(url);
+      entryMeta[url] = { ...meta, tags: meta.tags.filter(tag => tagKey(tag) !== key) };
+      activeTagFilters.delete(key);
+      saveMeta();
+      renderCards();
+    }
+
+    function getAllTags() {
+      const tags = new Map();
+      savedEntries.forEach(entry => {
+        getMeta(entry.url).tags.forEach(tag => {
+          const key = tagKey(tag);
+          if (key && !tags.has(key)) tags.set(key, tag);
+        });
+      });
+      return Array.from(tags.entries()).sort((a, b) => a[1].localeCompare(b[1], undefined, { sensitivity: 'base' }));
+    }
+
+    function toggleTagFilterPanel() {
+      tagFilterPanelOpen = !tagFilterPanelOpen;
+      renderTagFilterPanel();
+    }
+
+    function renderTagFilterPanel() {
+      const panel = document.getElementById('tagFilterPanel');
+      const btn = document.getElementById('tagFilterBtn');
+      const label = document.getElementById('tagFilterLabel');
+      const allTags = getAllTags();
+      const available = new Set(allTags.map(([key]) => key));
+      for (const key of [...activeTagFilters]) if (!available.has(key)) activeTagFilters.delete(key);
+
+      panel.classList.toggle('open', tagFilterPanelOpen);
+      btn.classList.toggle('active', activeTagFilters.size > 0);
+      btn.setAttribute('aria-expanded', String(tagFilterPanelOpen));
+      label.textContent = activeTagFilters.size ? 'Tags · ' + activeTagFilters.size : 'Tags';
+      if (!tagFilterPanelOpen) return;
+
+      if (!allTags.length) {
+        panel.innerHTML = '<span class="tag-filter-empty">No tags yet — add one from a card\'s ⋮ menu.</span>';
+        return;
+      }
+
+      panel.innerHTML = allTags.map(([key, labelText]) =>
+        `<button type="button" class="tag-filter-chip${activeTagFilters.has(key) ? ' active' : ''}" data-tag-key="${esc(key)}">${esc(labelText)}</button>`
+      ).join('') + (activeTagFilters.size ? '<button type="button" class="tag-filter-clear" id="tagFilterClearBtn">Clear</button>' : '');
+
+      panel.querySelectorAll('.tag-filter-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+          const key = chip.dataset.tagKey;
+          if (activeTagFilters.has(key)) activeTagFilters.delete(key);
+          else activeTagFilters.add(key);
+          renderTagFilterPanel();
+          renderCards();
+        });
+      });
+      document.getElementById('tagFilterClearBtn')?.addEventListener('click', () => {
+        activeTagFilters.clear();
+        renderTagFilterPanel();
+        renderCards();
+      });
+    }
+
+    function showMetaIOStatus(message, type) {
+      const element = document.getElementById('metaIOStatus');
+      if (!element) return;
+      element.textContent = message;
+      element.className = 'io-status ' + type;
+      clearTimeout(showMetaIOStatus.timer);
+      showMetaIOStatus.timer = setTimeout(() => { element.className = 'io-status'; }, 5000);
+    }
+
+    function exportMeta() {
+      try {
+        const meta = {};
+        savedEntries.forEach(entry => { meta[entry.url] = getMeta(entry.url); });
+        const payload = { type: 'appviewer-org-data', version: 2, exportedAt: new Date().toISOString(), meta };
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+        const objectUrl = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = objectUrl;
+        anchor.download = 'appviewer-tags-pins-' + new Date().toISOString().slice(0, 10) + '.json';
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
+        showMetaIOStatus('✓ Exported ' + savedEntries.length + ' item(s).', 'success');
+      } catch (error) {
+        showMetaIOStatus('✗ Export failed: ' + error.message, 'error');
+      }
+    }
+
+    function importMetaFile(event) {
+      const input = event.target;
+      const file = input.files?.[0];
+      input.value = '';
+      if (!file) return;
+      if (file.size > MAX_IMPORT_BYTES) {
+        showMetaIOStatus('✗ Import file is too large. Maximum size is 1 MB.', 'error');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const parsed = JSON.parse(String(reader.result || ''));
+          const incoming = parsed?.meta && typeof parsed.meta === 'object' && !Array.isArray(parsed.meta) ? parsed.meta : parsed;
+          if (!incoming || typeof incoming !== 'object' || Array.isArray(incoming)) throw new Error('Unrecognized file format.');
+
+          const knownUrls = new Set(savedEntries.map(entry => entry.url));
+          let count = 0;
+          for (const [rawUrl, rawMeta] of Object.entries(incoming).slice(0, MAX_ENTRIES)) {
+            if (rawUrl === '__proto__' || rawUrl === 'prototype' || rawUrl === 'constructor') continue;
+            let url;
+            try { url = normalizeHttpUrl(rawUrl); } catch (_) { continue; }
+            if (!knownUrls.has(url)) continue;
+            entryMeta[url] = sanitizeMetaRecord(rawMeta, getMeta(url));
+            count++;
+          }
+          saveMeta();
+          renderCards();
+          showMetaIOStatus('✓ Imported organization data for ' + count + ' matching item(s).', 'success');
+        } catch (error) {
+          showMetaIOStatus('✗ Import failed: ' + (error.message || 'Invalid JSON file.'), 'error');
+        }
+      };
+      reader.onerror = () => showMetaIOStatus('✗ Could not read the file.', 'error');
+      reader.readAsText(file);
+    }
+
+    function openSettings() {
+      previousFocus = document.activeElement;
+      const overlay = document.getElementById('settingsOverlay');
+      const panel = document.getElementById('settingsPanel');
+      overlay.classList.add('open');
+      overlay.setAttribute('aria-hidden', 'false');
+      panel.classList.add('open');
+      panel.setAttribute('aria-hidden', 'false');
+      document.getElementById('settingsBtn').setAttribute('aria-expanded', 'true');
+      document.body.style.overflow = 'hidden';
+      requestAnimationFrame(() => panel.querySelector('.sp-close')?.focus());
+    }
+
+    function closeSettings() {
+      const overlay = document.getElementById('settingsOverlay');
+      const panel = document.getElementById('settingsPanel');
+      overlay.classList.remove('open');
+      overlay.setAttribute('aria-hidden', 'true');
+      panel.classList.remove('open');
+      panel.setAttribute('aria-hidden', 'true');
+      document.getElementById('settingsBtn').setAttribute('aria-expanded', 'false');
+      document.body.style.overflow = '';
+      if (previousFocus && typeof previousFocus.focus === 'function') previousFocus.focus();
+    }
+
+    function setTheme(theme) {
+      const selected = THEMES.has(theme) ? theme : 'dark';
+      document.documentElement.setAttribute('data-theme', selected);
+      storageSet(THEME_KEY, selected);
+      document.querySelectorAll('.theme-card').forEach(card => {
+        const active = card.dataset.t === selected;
+        card.classList.toggle('active', active);
+        card.setAttribute('aria-pressed', String(active));
+      });
+      document.getElementById('headerTitle').textContent = THEME_TITLES[selected];
+    }
+
+    function iconText(text) {
+      const words = String(text || '').trim().match(/[A-Za-z0-9]+/g) || [];
+      if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase();
+      if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+      return 'AP';
+    }
+
+    function fetchWithTimeout(url, options = {}) {
+      const controller = new AbortController();
+      const externalSignal = options.signal;
+      const forwardAbort = () => controller.abort(externalSignal?.reason);
+      if (externalSignal) {
+        if (externalSignal.aborted) forwardAbort();
+        else externalSignal.addEventListener('abort', forwardAbort, { once: true });
+      }
+      const timeout = setTimeout(() => controller.abort(new DOMException('Request timed out', 'AbortError')), FETCH_TIMEOUT_MS);
+      const { signal: _ignored, ...rest } = options;
+      return fetch(url, {
+        ...rest,
+        signal: controller.signal,
+        redirect: 'follow',
+        cache: 'no-store',
+        credentials: 'omit',
+        referrerPolicy: 'no-referrer'
+      }).finally(() => {
+        clearTimeout(timeout);
+        externalSignal?.removeEventListener?.('abort', forwardAbort);
+      });
+    }
+
+    async function fetchJson(url, options = {}) {
+      const response = await fetchWithTimeout(url, options);
+      const text = await response.text();
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      const data = parseJson(text, null);
+      if (data === null) throw new Error('The server returned an invalid response.');
+      return data;
+    }
+
+    function apiUrl(action, params = {}) {
+      const url = new URL(APPS_SCRIPT_URL);
+      url.searchParams.set('action', action);
+      for (const [key, value] of Object.entries(params)) url.searchParams.set(key, String(value));
+      url.searchParams.set('t', String(Date.now()));
+      return url.href;
+    }
+
     function showSyncBadge() { document.getElementById('syncBadge').classList.add('visible'); }
     function hideSyncBadge() { document.getElementById('syncBadge').classList.remove('visible'); }
 
-    /* ── INIT ── */
+    function cacheEntries() {
+      if (!storageSet(CACHE_KEY, JSON.stringify(savedEntries))) {
+        showStatus('The browser could not update its local cache.', 'warn');
+      }
+    }
+
+    function isConfigured() {
+      try {
+        const url = new URL(APPS_SCRIPT_URL);
+        return url.protocol === 'https:' && !APPS_SCRIPT_URL.includes('YOUR_DEPLOYMENT_ID');
+      } catch (_) {
+        return false;
+      }
+    }
+
     function init() {
-      if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL.includes('YOUR_DEPLOYMENT_ID')) {
-        showError('Setup Required', 'Paste your Apps Script deployment URL inside AppViewer.html.'); return;
+      clearTimeout(retryTimer);
+      if (!isConfigured()) {
+        showError('Setup Required', 'Paste a valid HTTPS Apps Script deployment URL inside the HTML file.');
+        return;
       }
-      if (!navigator.onLine) { showError('No Internet', 'You are offline. Check your connection.'); return; }
 
-      /* ✅ FIX 1: Load from cache immediately, then fetch in background */
-      const cached = localStorage.getItem(CACHE_KEY);
-      if (cached) {
-        try {
-          savedEntries = JSON.parse(cached);
-          syncMetaWithEntries(savedEntries);
-          renderCards();
-          showApp();           // show UI instantly from cache
-          showSyncBadge();     // subtle "syncing" indicator
-          fetchFresh(false);   // background refresh
-        } catch(e) {
-          // cache corrupt — fall through to normal load
-          localStorage.removeItem(CACHE_KEY);
-          showLoader('Connecting…');
+      const cached = normalizeEntries(parseJson(storageGet(CACHE_KEY, '[]'), []));
+      if (cached.length) {
+        savedEntries = cached;
+        syncMetaWithEntries(savedEntries);
+        renderCards();
+        showApp();
+        if (navigator.onLine) {
+          showSyncBadge();
           fetchFresh(false);
+        } else {
+          showStatus('You are offline. Showing cached data.', 'warn');
         }
-      } else {
-        showLoader('Connecting…');
-        fetchFresh(false);
+        return;
+      }
+
+      if (!navigator.onLine) {
+        showError('No Internet', 'You are offline and no cached app list is available.');
+        return;
+      }
+      showLoader('Connecting…');
+      fetchFresh(false);
+    }
+
+    function retryInit() {
+      hideError();
+      showLoader('Reconnecting…');
+      clearTimeout(retryTimer);
+      retryTimer = setTimeout(init, 250);
+    }
+
+    async function fetchFresh(isRefresh) {
+      refreshController?.abort();
+      refreshController = new AbortController();
+      const sequence = ++refreshSequence;
+      refreshInFlight = true;
+      updateBtns();
+
+      try {
+        const data = await fetchJson(apiUrl('getUrls'), { signal: refreshController.signal });
+        if (sequence !== refreshSequence) return;
+        if (data?.error) throw new Error(String(data.error));
+
+        const rawEntries = Array.isArray(data?.entries)
+          ? data.entries
+          : (Array.isArray(data?.urls) ? data.urls.map(url => ({ url, title: '' })) : []);
+        savedEntries = normalizeEntries(rawEntries);
+        syncMetaWithEntries(savedEntries);
+        cacheEntries();
+        if (selectedUrl && !savedEntries.some(entry => entry.url === selectedUrl)) selectedUrl = '';
+        renderCards();
+        hideSyncBadge();
+
+        if (isRefresh) {
+          showStatus('✓ List refreshed — ' + savedEntries.length + ' app(s).', 'success');
+          setTimeout(clearStatus, 3000);
+        } else {
+          showApp();
+        }
+      } catch (error) {
+        if (sequence !== refreshSequence || refreshController.signal.aborted) return;
+        hideSyncBadge();
+        const message = error.name === 'AbortError' ? 'Request timed out. Please try again.' : 'Error: ' + error.message;
+        if (isRefresh) showStatus(message, 'error');
+        else if (!savedEntries.length) showError('Could Not Load Data', message);
+        else showStatus('⚠️ Could not sync. Showing cached data.', 'warn');
+      } finally {
+        if (sequence === refreshSequence) {
+          refreshInFlight = false;
+          document.getElementById('refreshBtn').classList.remove('spinning');
+          updateBtns();
+        }
       }
     }
 
-    function retryInit() { hideError(); showLoader('Reconnecting…'); setTimeout(init, 300); }
-
-    /* ── FETCH FRESH DATA ── */
-    function fetchFresh(isRefresh) {
-      fetchWithTimeout(APPS_SCRIPT_URL + '?action=getUrls&t=' + Date.now())
-        .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-        .then(data => {
-          if (data.error) throw new Error(data.error);
-          if (Array.isArray(data.entries))        savedEntries = data.entries;
-          else if (Array.isArray(data.urls))      savedEntries = data.urls.map(u => ({ url: u, title: '' }));
-          else                                    savedEntries = [];
-
-          /* ✅ Save to localStorage cache */
-          try { localStorage.setItem(CACHE_KEY, JSON.stringify(savedEntries)); } catch(e) {}
-          syncMetaWithEntries(savedEntries);
-
-          renderCards();
-          hideSyncBadge();
-
-          if (isRefresh) {
-            document.getElementById('refreshBtn').classList.remove('spinning');
-            document.getElementById('refreshBtn').disabled = false;
-            showStatus('✓ List refreshed — ' + savedEntries.length + ' app(s)!', 'success');
-            setTimeout(clearStatus, 3000);
-          } else {
-            showApp(); // first load without cache
-          }
-        })
-        .catch(err => {
-          hideSyncBadge();
-          const msg = err.name === 'AbortError' ? 'Request timed out. Please try again.' : 'Error: ' + err.message;
-          if (isRefresh) {
-            document.getElementById('refreshBtn').classList.remove('spinning');
-            document.getElementById('refreshBtn').disabled = false;
-            showStatus(msg, 'error');
-          } else if (!localStorage.getItem(CACHE_KEY)) {
-            // Only block with error screen if there's no cached data to fall back on
-            showError('Could Not Load Data', msg);
-          } else {
-            showStatus('⚠️ Could not sync. Showing cached data.', 'warn');
-            setTimeout(clearStatus, 4000);
-          }
-        });
-    }
-
-    /* ✅ loadEntries kept for compatibility — routes to fetchFresh */
-    function loadEntries(isRefresh = false) {
-      fetchFresh(isRefresh);
-    }
+    function loadEntries(isRefresh = false) { fetchFresh(isRefresh); }
 
     function refreshList() {
-      if (!navigator.onLine) { showStatus('You are offline.', 'error'); return; }
+      if (busyAction) return;
+      if (!navigator.onLine) {
+        showStatus('You are offline.', 'error');
+        return;
+      }
       clearStatus();
-      const btn = document.getElementById('refreshBtn');
-      btn.disabled = true; btn.classList.add('spinning');
+      document.getElementById('refreshBtn').classList.add('spinning');
       showSyncBadge();
       fetchFresh(true);
     }
 
-    /* ── RENDER ── */
-    function createCard(entry, colorIdx) {
+    function createCard(entry, colorIndex) {
       const meta = getMeta(entry.url);
-      const color = ICON_COLORS[colorIdx % ICON_COLORS.length];
-      const disp = (entry.title && entry.title.trim()) ? entry.title.trim()
-                 : (entry.url.length > 50 ? entry.url.slice(0, 47) + '…' : entry.url);
-      const urlS = entry.url.replace(/^https?:\/\//, '').replace(/\/$/, '');
-      const hasOrder = meta.order !== null && meta.order !== undefined && meta.order !== '';
-      const tags = Array.isArray(meta.tags) ? meta.tags : [];
+      const color = ICON_COLORS[Math.abs(colorIndex) % ICON_COLORS.length];
+      const displayName = entry.title || (entry.url.length > 50 ? entry.url.slice(0, 47) + '…' : entry.url);
+      const displayUrl = entry.url.replace(/^https?:\/\//, '').replace(/\/$/, '');
+      const hasOrder = Number.isInteger(meta.order);
+      const tags = meta.tags;
+      const menuOpen = openMenus.has(entry.url);
 
       const card = document.createElement('div');
       card.className = 'app-card'
@@ -1303,297 +1579,404 @@
         + (meta.pinned ? ' is-pinned' : '')
         + (meta.hidden ? ' is-hidden' : '');
       card.dataset.url = entry.url;
-
       card.innerHTML = `
-        <div class="app-card-main" role="button" tabindex="0" title="${esc(entry.url)}">
-          <div class="app-icon" style="background:${color}">${esc(iconText(disp))}</div>
+        <div class="app-card-main" role="button" tabindex="0" title="${esc(entry.url)}" aria-label="Select ${esc(displayName)}">
+          <div class="app-icon" style="background:${color}">${esc(iconText(displayName))}</div>
           <div class="app-info">
-            <div class="app-name">${meta.pinned ? '📌 ' : ''}${esc(disp)}</div>
-            <div class="app-url">${esc(urlS)}</div>
-            ${tags.length ? `<div class="app-tags-preview">${tags.map(t => `<span class="tag-chip-mini">${esc(t)}</span>`).join('')}</div>` : ''}
+            <div class="app-name">${meta.pinned ? '📌 ' : ''}${esc(displayName)}</div>
+            <div class="app-url">${esc(displayUrl)}</div>
+            ${tags.length ? `<div class="app-tags-preview">${tags.map(tag => `<span class="tag-chip-mini">${esc(tag)}</span>`).join('')}</div>` : ''}
           </div>
-          ${hasOrder ? `<div class="badge-order">#${esc(String(meta.order))}</div>` : ''}
+          ${hasOrder ? `<div class="badge-order">#${meta.order}</div>` : ''}
           <div class="app-check">✓</div>
-          <button type="button" class="app-kebab" title="More options" data-action="toggle-menu">⋮</button>
+          <button type="button" class="app-kebab" title="More options" aria-label="More options for ${esc(displayName)}" aria-expanded="${menuOpen}" data-action="toggle-menu">⋮</button>
         </div>
-        <div class="app-card-menu${openMenus.has(entry.url) ? ' open' : ''}">
+        <div class="app-card-menu${menuOpen ? ' open' : ''}">
           <div class="menu-actions-row">
             <button type="button" class="card-act${meta.pinned ? ' active' : ''}" data-action="pin">${meta.pinned ? '📌 Unpin' : '📌 Pin'}</button>
             <div class="order-input-wrap">
               <span>Priority #</span>
-              <input type="number" min="1" class="order-input" data-action="order" placeholder="—" value="${hasOrder ? esc(String(meta.order)) : ''}" />
+              <input type="number" min="1" max="9999" inputmode="numeric" class="order-input" data-action="order" aria-label="Priority number" placeholder="—" value="${hasOrder ? meta.order : ''}" />
             </div>
             <button type="button" class="card-act" data-action="${meta.hidden ? 'unhide' : 'hide'}">${meta.hidden ? '👁 Unhide' : '🙈 Hide'}</button>
           </div>
           <div class="card-tags-editor">
             <div class="card-tags-label">🏷️ Tags</div>
             <div class="card-tags-chips">
-              ${tags.map(t => `<span class="tag-chip">${esc(t)}<button type="button" class="tag-remove" data-action="remove-tag" data-tag="${esc(t)}">✕</button></span>`).join('')}
+              ${tags.map(tag => `<span class="tag-chip">${esc(tag)}<button type="button" class="tag-remove" aria-label="Remove tag ${esc(tag)}" data-action="remove-tag" data-tag="${esc(tag)}">✕</button></span>`).join('')}
             </div>
             <div class="tag-add-row">
-              <input type="text" class="tag-input" data-action="tag-input" placeholder="Add a tag…" maxlength="24" autocomplete="off" />
+              <input type="text" class="tag-input" data-action="tag-input" placeholder="Add a tag…" maxlength="${MAX_TAG_LENGTH}" autocomplete="off" />
               <button type="button" class="card-act" data-action="add-tag">+ Add</button>
             </div>
           </div>
         </div>`;
 
       const mainRow = card.querySelector('.app-card-main');
-      mainRow.addEventListener('click', () => selectApp(entry.url, card));
-      mainRow.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectApp(entry.url, card); } });
+      mainRow.addEventListener('click', event => {
+        if (event.target.closest('button, input')) return;
+        selectApp(entry.url, card);
+      });
+      mainRow.addEventListener('keydown', event => {
+        if (event.target !== mainRow) return;
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          selectApp(entry.url, card);
+        }
+      });
 
-      card.querySelector('[data-action="toggle-menu"]').addEventListener('click', e => {
-        e.stopPropagation();
+      const menuButton = card.querySelector('[data-action="toggle-menu"]');
+      menuButton.addEventListener('click', event => {
+        event.stopPropagation();
         const menu = card.querySelector('.app-card-menu');
         const isOpen = menu.classList.toggle('open');
-        if (isOpen) openMenus.add(entry.url); else openMenus.delete(entry.url);
+        menuButton.setAttribute('aria-expanded', String(isOpen));
+        if (isOpen) openMenus.add(entry.url);
+        else openMenus.delete(entry.url);
       });
-      card.querySelector('[data-action="pin"]').addEventListener('click', e => { e.stopPropagation(); togglePin(entry.url); });
-      card.querySelector('[data-action="hide"], [data-action="unhide"]').addEventListener('click', e => { e.stopPropagation(); toggleHide(entry.url); });
+      card.querySelector('[data-action="pin"]').addEventListener('click', event => { event.stopPropagation(); togglePin(entry.url); });
+      card.querySelector('[data-action="hide"], [data-action="unhide"]').addEventListener('click', event => { event.stopPropagation(); toggleHide(entry.url); });
+
       const orderInput = card.querySelector('[data-action="order"]');
-      orderInput.addEventListener('click', e => e.stopPropagation());
-      orderInput.addEventListener('change', e => setOrder(entry.url, e.target.value));
+      orderInput.addEventListener('click', event => event.stopPropagation());
+      orderInput.addEventListener('change', event => setOrder(entry.url, event.target.value));
 
       const tagInput = card.querySelector('[data-action="tag-input"]');
-      tagInput.addEventListener('click', e => e.stopPropagation());
-      tagInput.addEventListener('keydown', e => {
-        e.stopPropagation();
-        if (e.key === 'Enter') { e.preventDefault(); addTag(entry.url, tagInput.value); }
+      tagInput.addEventListener('click', event => event.stopPropagation());
+      tagInput.addEventListener('keydown', event => {
+        event.stopPropagation();
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          addTag(entry.url, tagInput.value);
+        }
       });
-      card.querySelector('[data-action="add-tag"]').addEventListener('click', e => {
-        e.stopPropagation(); addTag(entry.url, tagInput.value);
+      card.querySelector('[data-action="add-tag"]').addEventListener('click', event => {
+        event.stopPropagation();
+        addTag(entry.url, tagInput.value);
       });
-      card.querySelectorAll('[data-action="remove-tag"]').forEach(btn => {
-        btn.addEventListener('click', e => { e.stopPropagation(); removeTag(entry.url, btn.dataset.tag); });
+      card.querySelectorAll('[data-action="remove-tag"]').forEach(button => {
+        button.addEventListener('click', event => {
+          event.stopPropagation();
+          removeTag(entry.url, button.dataset.tag);
+        });
       });
-
       return card;
     }
 
     function renderCards() {
       const list = document.getElementById('appList');
-      const f = currentFilter.toLowerCase().trim();
-      const searched = f
-        ? savedEntries.filter(e => (e.title || '').toLowerCase().includes(f) || (e.url || '').toLowerCase().includes(f))
+      const filter = currentFilter.toLocaleLowerCase().trim();
+      const searched = filter
+        ? savedEntries.filter(entry => {
+            const meta = getMeta(entry.url);
+            return entry.title.toLocaleLowerCase().includes(filter)
+              || entry.url.toLocaleLowerCase().includes(filter)
+              || meta.tags.some(tag => tag.toLocaleLowerCase().includes(filter));
+          })
         : savedEntries.slice();
       const filtered = activeTagFilters.size
-        ? searched.filter(e => (getMeta(e.url).tags || []).some(t => activeTagFilters.has(t)))
+        ? searched.filter(entry => getMeta(entry.url).tags.some(tag => activeTagFilters.has(tagKey(tag))))
         : searched;
 
       document.getElementById('urlCount').textContent = savedEntries.length;
-      const rl = document.getElementById('resultsLabel'), rb = document.getElementById('resultsBadge');
-      const hasActiveFilter = !!f || activeTagFilters.size > 0;
-      if (hasActiveFilter) { rl.style.display = 'flex'; rb.textContent = filtered.length + ' found'; }
-      else                  { rl.style.display = 'none'; }
+      const resultsLabel = document.getElementById('resultsLabel');
+      const resultsBadge = document.getElementById('resultsBadge');
+      if (filter || activeTagFilters.size) {
+        resultsLabel.style.display = 'flex';
+        resultsBadge.textContent = filtered.length + ' found';
+      } else {
+        resultsLabel.style.display = 'none';
+      }
 
-      const visible = sortEntries(filtered.filter(e => !getMeta(e.url).hidden));
-      const hidden  = sortEntries(filtered.filter(e => getMeta(e.url).hidden));
-
+      const visible = sortEntries(filtered.filter(entry => !getMeta(entry.url).hidden));
+      const hidden = sortEntries(filtered.filter(entry => getMeta(entry.url).hidden));
       const hiddenRow = document.getElementById('hiddenToggleRow');
-      const hiddenBtn = document.getElementById('hiddenToggleBtn');
+      const hiddenButton = document.getElementById('hiddenToggleBtn');
       if (hidden.length) {
         hiddenRow.style.display = 'block';
-        hiddenBtn.textContent = (showHidden ? '▾ Hide ' : '▸ Show ') + hidden.length + ' hidden app' + (hidden.length === 1 ? '' : 's');
+        hiddenButton.textContent = (showHidden ? '▾ Hide ' : '▸ Show ') + hidden.length + ' hidden app' + (hidden.length === 1 ? '' : 's');
       } else {
         hiddenRow.style.display = 'none';
         showHidden = false;
       }
 
-      list.innerHTML = '';
+      const actionableUrls = new Set(visible.map(entry => entry.url));
+      if (showHidden) hidden.forEach(entry => actionableUrls.add(entry.url));
+      if (selectedUrl && !actionableUrls.has(selectedUrl)) selectedUrl = '';
 
+      list.replaceChildren();
       if (!visible.length && !(showHidden && hidden.length)) {
-        const el = document.createElement('div'); el.className = 'app-empty';
-        el.innerHTML = f
-          ? `<div class="empty-emoji">🔎</div><p>No apps match "<strong>${esc(f)}</strong>"</p><div class="empty-hint">Try a different keyword</div>`
+        const empty = document.createElement('div');
+        empty.className = 'app-empty';
+        empty.innerHTML = filter
+          ? `<div class="empty-emoji">🔎</div><p>No apps match "<strong>${esc(filter)}</strong>"</p><div class="empty-hint">Try a different keyword</div>`
           : (activeTagFilters.size
-            ? `<div class="empty-emoji">🏷️</div><p>No apps match the selected tag${activeTagFilters.size > 1 ? 's' : ''}</p><div class="empty-hint">Try clearing the tag filter</div>`
-            : `<div class="empty-emoji">🌱</div><p>No saved apps yet</p><div class="empty-hint">Add your first app below!</div>`);
-        list.appendChild(el); updateBtns(); renderTagFilterPanel(); return;
+              ? `<div class="empty-emoji">🏷️</div><p>No apps match the selected tag${activeTagFilters.size > 1 ? 's' : ''}</p><div class="empty-hint">Try clearing the tag filter</div>`
+              : '<div class="empty-emoji">🌱</div><p>No saved apps yet</p><div class="empty-hint">Add your first app below!</div>');
+        list.appendChild(empty);
+        updateBtns();
+        renderTagFilterPanel();
+        return;
       }
 
-      visible.forEach((entry, i) => {
-        const gi = savedEntries.findIndex(e => e.url === entry.url);
-        const card = createCard(entry, gi >= 0 ? gi : i);
-        card.style.animationDelay = (i * 30) + 'ms';
+      visible.forEach((entry, index) => {
+        const originalIndex = savedEntries.findIndex(item => item.url === entry.url);
+        const card = createCard(entry, originalIndex >= 0 ? originalIndex : index);
+        card.style.animationDelay = Math.min(index * 25, 250) + 'ms';
         list.appendChild(card);
       });
 
       if (showHidden && hidden.length) {
-        const div = document.createElement('div'); div.className = 'hidden-divider'; div.textContent = 'Hidden';
-        list.appendChild(div);
-        hidden.forEach((entry, i) => {
-          const gi = savedEntries.findIndex(e => e.url === entry.url);
-          const card = createCard(entry, gi >= 0 ? gi : i);
-          card.style.animationDelay = ((visible.length + i) * 30) + 'ms';
-          list.appendChild(card);
+        const divider = document.createElement('div');
+        divider.className = 'hidden-divider';
+        divider.textContent = 'Hidden';
+        list.appendChild(divider);
+        hidden.forEach((entry, index) => {
+          const originalIndex = savedEntries.findIndex(item => item.url === entry.url);
+          list.appendChild(createCard(entry, originalIndex >= 0 ? originalIndex : index));
         });
       }
-
       updateBtns();
       renderTagFilterPanel();
     }
 
-    function selectApp(url, cardEl) {
-      if (selectedUrl === url) return;
+    function selectApp(url, cardElement) {
       selectedUrl = url;
-      document.querySelectorAll('.app-card').forEach(c => c.classList.remove('selected'));
-      if (cardEl) cardEl.classList.add('selected');
-      updateBtns(); clearStatus();
-    }
-    function updateBtns() {
-      const h = !!selectedUrl;
-      document.getElementById('openBtn').disabled   = !h;
-      document.getElementById('deleteBtn').disabled = !h;
+      document.querySelectorAll('.app-card').forEach(card => card.classList.remove('selected'));
+      cardElement?.classList.add('selected');
+      updateBtns();
+      clearStatus();
     }
 
-    /* ── SEARCH ── */
-    let searchDebounceTimer = null;
+    function updateBtns() {
+      const hasSelection = !!selectedUrl;
+      document.getElementById('openBtn').disabled = !hasSelection || busyAction;
+      document.getElementById('deleteBtn').disabled = !hasSelection || busyAction;
+      document.getElementById('validateBtn').disabled = busyAction;
+      document.getElementById('refreshBtn').disabled = busyAction || refreshInFlight;
+    }
+
     function onSearch() {
       currentFilter = document.getElementById('searchInput').value;
       document.getElementById('searchClear').classList.toggle('visible', currentFilter.length > 0);
-      /* ✅ Debounced: renderCards() rebuilds every card + listener in the list.
-         Running that on every single keystroke is what was causing dropped/
-         laggy characters while typing (search box, and tag/order inputs if a
-         rebuild landed while a card menu was open). Wait for a short pause
-         in typing instead of rebuilding on every character. */
       clearTimeout(searchDebounceTimer);
-      searchDebounceTimer = setTimeout(renderCards, 150);
+      searchDebounceTimer = setTimeout(renderCards, 120);
     }
+
     function clearSearch() {
-      document.getElementById('searchInput').value = ''; currentFilter = '';
+      const input = document.getElementById('searchInput');
+      input.value = '';
+      currentFilter = '';
       document.getElementById('searchClear').classList.remove('visible');
-      document.getElementById('searchInput').focus();
+      input.focus();
       clearTimeout(searchDebounceTimer);
       renderCards();
     }
 
-    /* ── OPEN ── */
+    function launchUrl(rawUrl) {
+      let url;
+      try { url = normalizeHttpUrl(rawUrl); }
+      catch (error) { showStatus(error.message, 'error'); return false; }
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.target = '_blank';
+      anchor.rel = 'noopener noreferrer';
+      anchor.referrerPolicy = 'no-referrer';
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      return true;
+    }
+
     function openSelected() {
-      if (!selectedUrl) return;
+      if (!selectedUrl || busyAction) return;
+      if (!launchUrl(selectedUrl)) return;
+      const meta = getMeta(selectedUrl);
+      entryMeta[selectedUrl] = { ...meta, lastOpened: Date.now() };
+      saveMeta();
+      renderCards();
+    }
+
+    async function deleteSelected() {
+      if (!selectedUrl || busyAction) return;
       if (!navigator.onLine) { showStatus('No Internet Connection.', 'error'); return; }
+      const urlToDelete = selectedUrl;
+      const entry = savedEntries.find(item => item.url === urlToDelete);
+      const label = entry?.title ? '"' + entry.title + '"' : urlToDelete;
+      if (!confirm('Remove ' + label + ' from your saved list?')) return;
+
+      busyAction = true;
+      refreshController?.abort();
+      mutationController?.abort();
+      mutationController = new AbortController();
+      setLoading('deleteBtn', 'deleteBtnText', 'deleteSpin', true, '');
+      updateBtns();
       clearStatus();
-      setLoading('openBtn', 'openBtnText', 'openSpin', true, 'Opening…');
-      /* ✅ Nothing needs to finish before this URL is known, so open it right
-         away, in the same click — this is what user-gesture-gated popup
-         rules require. (No 'noopener' here so we can actually tell whether
-         it opened; opener is stripped manually right after instead.) */
-      const newWin = window.open(selectedUrl, '_blank');
-      if (newWin) newWin.opener = null;
-      setLoading('openBtn', 'openBtnText', 'openSpin', false, '↗ Open App');
-      if (!newWin) {
-        showBlockedLink(selectedUrl);
-      } else {
-        const m = getMeta(selectedUrl);
-        entryMeta[selectedUrl] = { ...m, lastOpened: Date.now() };
-        saveMeta(); renderCards();
+      showStatus('Removing entry…', 'info');
+
+      try {
+        const data = await fetchJson(apiUrl('deleteUrl', { url: urlToDelete }), { signal: mutationController.signal });
+        if (!data?.success) throw new Error(data?.message || 'Could not delete.');
+        savedEntries = savedEntries.filter(item => item.url !== urlToDelete);
+        delete entryMeta[urlToDelete];
+        openMenus.delete(urlToDelete);
+        selectedUrl = '';
+        cacheEntries();
+        saveMeta();
+        renderCards();
+        showStatus('✓ Entry removed!', 'success');
+        setTimeout(clearStatus, 3000);
+      } catch (error) {
+        if (!mutationController.signal.aborted) showStatus(error.name === 'AbortError' ? 'Timed out. Try again.' : 'Request failed: ' + error.message, 'error');
+      } finally {
+        busyAction = false;
+        setLoading('deleteBtn', 'deleteBtnText', 'deleteSpin', false, '🗑');
+        updateBtns();
       }
     }
 
-    /* ── DELETE ── */
-    function deleteSelected() {
-      if (!selectedUrl) return;
-      const entry = savedEntries.find(e => e.url === selectedUrl);
-      const label = (entry && entry.title && entry.title.trim()) ? '"' + entry.title.trim() + '"' : selectedUrl;
-      if (!navigator.onLine) { showStatus('No Internet Connection.', 'error'); return; }
-      if (!confirm('Remove ' + label + ' from your saved list?')) return;
-      setLoading('deleteBtn', 'deleteBtnText', 'deleteSpin', true, '');
-      clearStatus(); showStatus('Removing entry…', 'info');
-      fetchWithTimeout(APPS_SCRIPT_URL + '?action=deleteUrl&url=' + encodeURIComponent(selectedUrl))
-        .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-        .then(data => {
-          setLoading('deleteBtn', 'deleteBtnText', 'deleteSpin', false, '🗑');
-          if (data.success) {
-            savedEntries = savedEntries.filter(e => e.url !== selectedUrl);
-            /* ✅ Update cache after delete */
-            try { localStorage.setItem(CACHE_KEY, JSON.stringify(savedEntries)); } catch(e) {}
-            delete entryMeta[selectedUrl]; saveMeta();
-            selectedUrl = ''; renderCards();
-            showStatus('✓ Entry removed!', 'success'); setTimeout(clearStatus, 3000);
-          } else showStatus('✗ ' + (data.message || 'Could not delete.'), 'error');
-        })
-        .catch(err => {
-          setLoading('deleteBtn', 'deleteBtnText', 'deleteSpin', false, '🗑');
-          showStatus(err.name === 'AbortError' ? 'Timed out. Try again.' : 'Request failed: ' + err.message, 'error');
-        });
-    }
+    async function validateAndAdd() {
+      if (busyAction) return;
+      const titleInput = document.getElementById('newTitle');
+      const urlInput = document.getElementById('newUrl');
+      const title = cleanTitle(titleInput.value);
+      if (!title) { showStatus('Please enter an app name.', 'warn'); titleInput.focus(); return; }
 
-    /* ── ADD ── */
-    function validateAndAdd() {
-      const rawTitle = document.getElementById('newTitle').value.trim();
-      const rawUrl   = document.getElementById('newUrl').value.trim();
-      if (!rawTitle) { showStatus('Please enter an app name.', 'warn'); document.getElementById('newTitle').focus(); return; }
-      if (!rawUrl)   { showStatus('Please enter a URL.', 'warn');       document.getElementById('newUrl').focus();   return; }
+      let url;
+      try { url = normalizeHttpUrl(urlInput.value); }
+      catch (error) { showStatus(error.message, 'warn'); urlInput.focus(); return; }
+      if (savedEntries.some(entry => entry.url === url)) {
+        selectedUrl = url;
+        renderCards();
+        showStatus('This app is already in your list.', 'warn');
+        return;
+      }
       if (!navigator.onLine) { showStatus('No Internet Connection.', 'error'); return; }
+
+      busyAction = true;
+      refreshController?.abort();
+      mutationController?.abort();
+      mutationController = new AbortController();
       setLoading('validateBtn', 'validateBtnText', 'validateSpin', true, 'Saving…');
+      updateBtns();
       clearStatus();
-      /* ✅ Open the tab immediately, in the same click handler, before the
-         network request — a window.open() called after an await/fetch is
-         no longer tied to the user gesture and gets blocked by real popup
-         blockers. Navigate this already-open tab once the save succeeds,
-         or close it if the save fails. */
-      const newWin = window.open('', '_blank');
-      if (newWin) newWin.opener = null;
-      fetchWithTimeout(APPS_SCRIPT_URL + '?action=validateAndSave&url=' + encodeURIComponent(rawUrl) + '&title=' + encodeURIComponent(rawTitle))
-        .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-        .then(data => {
-          setLoading('validateBtn', 'validateBtnText', 'validateSpin', false, 'Add');
-          if (data.success) {
-            const su = data.url || rawUrl, st = data.title || rawTitle;
-            if (!savedEntries.some(e => e.url === su)) savedEntries.push({ url: su, title: st });
-            /* ✅ Update cache after add */
-            try { localStorage.setItem(CACHE_KEY, JSON.stringify(savedEntries)); } catch(e) {}
-            entryMeta[su] = { pinned: false, hidden: false, order: null, addedAt: Date.now(), lastOpened: 0 };
-            saveMeta();
-            selectedUrl = su;
-            document.getElementById('newTitle').value = '';
-            document.getElementById('newUrl').value   = '';
-            renderCards();
-            showStatus('🎉 "' + st + '" saved! Opening…', 'success');
-            setTimeout(() => {
-              if (!newWin) showBlockedLink(su);
-              else { newWin.location.href = su; clearStatus(); }
-            }, 800);
-          } else {
-            if (newWin) newWin.close();
-            showStatus('✗ ' + (data.message || 'Could not save.'), 'error');
-          }
-        })
-        .catch(err => {
-          if (newWin) newWin.close();
-          setLoading('validateBtn', 'validateBtnText', 'validateSpin', false, 'Add');
-          showStatus(err.name === 'AbortError' ? 'Timed out. Try again.' : 'Request failed: ' + err.message, 'error');
-        });
+
+      try {
+        const data = await fetchJson(apiUrl('validateAndSave', { url, title }), { signal: mutationController.signal });
+        if (!data?.success) throw new Error(data?.message || 'Could not save.');
+        const savedUrl = normalizeHttpUrl(data.url || url);
+        const savedTitle = cleanTitle(data.title || title) || title;
+        const existingIndex = savedEntries.findIndex(entry => entry.url === savedUrl);
+        if (existingIndex >= 0) savedEntries[existingIndex] = { url: savedUrl, title: savedTitle };
+        else savedEntries.push({ url: savedUrl, title: savedTitle });
+        entryMeta[savedUrl] = sanitizeMetaRecord({ ...emptyMeta(), addedAt: Date.now(), tags: [] });
+        selectedUrl = savedUrl;
+        titleInput.value = '';
+        urlInput.value = '';
+        cacheEntries();
+        saveMeta();
+        renderCards();
+        showStatus('🎉 "' + savedTitle + '" was saved. Tap Open App to launch it.', 'success');
+      } catch (error) {
+        if (!mutationController.signal.aborted) showStatus(error.name === 'AbortError' ? 'Timed out. Try again.' : 'Request failed: ' + error.message, 'error');
+      } finally {
+        busyAction = false;
+        setLoading('validateBtn', 'validateBtnText', 'validateSpin', false, 'Add');
+        updateBtns();
+      }
     }
 
-    /* ── HELPERS ── */
-    function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-    function showStatus(msg, type) { const e = document.getElementById('status'); e.textContent = msg; e.className = type; e.style.display = 'block'; }
-    /* ✅ Some browsers (or a "always block" site setting) block window.open()
-       even when it's called synchronously in a click handler — that's a
-       browser/site setting, not something code can override. This shows a
-       real, physically-tappable link instead: a link the user clicks
-       themselves is never subject to the popup blocker. */
-    function showBlockedLink(url) {
-      const e = document.getElementById('status');
-      e.innerHTML = 'Popup was blocked. <a href="' + esc(url) + '" target="_blank" rel="noopener noreferrer" ' +
-        'style="color:inherit;text-decoration:underline;font-weight:800;">Tap here to open it</a> — ' +
-        'or allow popups for this site in your browser settings to skip this step next time.';
-      e.className = 'warn'; e.style.display = 'block';
+    function showStatus(message, type) {
+      const element = document.getElementById('status');
+      element.textContent = message;
+      element.className = type;
+      element.style.display = 'block';
     }
-    function clearStatus()         { const e = document.getElementById('status'); e.style.display = 'none'; e.className = ''; e.textContent = ''; }
-    function setLoading(b, t, s, on, label) { document.getElementById(b).disabled = on; document.getElementById(t).innerHTML = label; document.getElementById(s).style.display = on ? 'block' : 'none'; }
-    function showLoader(msg) { document.getElementById('loaderMsg').textContent = msg || 'Loading…'; document.getElementById('loader').classList.remove('hidden'); document.getElementById('app').classList.remove('visible'); document.getElementById('errorScreen').classList.remove('visible'); }
-    function showApp()       { document.getElementById('loader').classList.add('hidden'); document.getElementById('app').classList.add('visible'); document.getElementById('errorScreen').classList.remove('visible'); }
-    function showError(title, detail) { document.getElementById('loader').classList.add('hidden'); document.getElementById('app').classList.remove('visible'); document.getElementById('errorTitle').textContent = title; document.getElementById('errorDetail').textContent = detail; document.getElementById('errorScreen').classList.add('visible'); }
-    function hideError()     { document.getElementById('errorScreen').classList.remove('visible'); }
 
-    /* ── KEYBOARD ── */
-    document.getElementById('newUrl').addEventListener('keydown',   e => { if (e.key === 'Enter') validateAndAdd(); });
-    document.getElementById('newTitle').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('newUrl').focus(); });
-    document.getElementById('searchInput').addEventListener('keydown', e => { if (e.key === 'Escape') clearSearch(); });
+    function clearStatus() {
+      const element = document.getElementById('status');
+      element.style.display = 'none';
+      element.className = '';
+      element.textContent = '';
+    }
 
-    /* ── BOOT ── */
-    window.addEventListener('load', init);
-    window.addEventListener('online', () => { if (!document.getElementById('app').classList.contains('visible')) retryInit(); });
+    function setLoading(buttonId, textId, spinnerId, loading, label) {
+      const button = document.getElementById(buttonId);
+      const text = document.getElementById(textId);
+      const spinner = document.getElementById(spinnerId);
+      button.disabled = loading;
+      text.textContent = label;
+      spinner.style.display = loading ? 'block' : 'none';
+    }
+
+    function showLoader(message) {
+      document.getElementById('loaderMsg').textContent = message || 'Loading…';
+      document.getElementById('loader').classList.remove('hidden');
+      document.getElementById('app').classList.remove('visible');
+      document.getElementById('errorScreen').classList.remove('visible');
+    }
+
+    function showApp() {
+      document.getElementById('loader').classList.add('hidden');
+      document.getElementById('app').classList.add('visible');
+      document.getElementById('errorScreen').classList.remove('visible');
+    }
+
+    function showError(title, detail) {
+      document.getElementById('loader').classList.add('hidden');
+      document.getElementById('app').classList.remove('visible');
+      document.getElementById('errorTitle').textContent = title;
+      document.getElementById('errorDetail').textContent = detail;
+      document.getElementById('errorScreen').classList.add('visible');
+    }
+
+    function hideError() { document.getElementById('errorScreen').classList.remove('visible'); }
+
+    loadMeta();
+    setTheme(THEMES.has(storageGet(THEME_KEY, 'dark')) ? storageGet(THEME_KEY, 'dark') : 'dark');
+    document.getElementById('settingsOverlay').setAttribute('aria-hidden', 'true');
+    document.getElementById('tagFilterBtn').setAttribute('aria-expanded', 'false');
+
+    document.querySelectorAll('.theme-card').forEach(card => {
+      card.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          setTheme(card.dataset.t);
+        }
+      });
+    });
+
+    document.addEventListener('keydown', event => {
+      const panel = document.getElementById('settingsPanel');
+      if (event.key === 'Escape' && panel.classList.contains('open')) {
+        closeSettings();
+        return;
+      }
+      if (event.key !== 'Tab' || !panel.classList.contains('open')) return;
+      const focusable = [...panel.querySelectorAll('button, [role="button"][tabindex="0"], input, select, textarea, a[href]')]
+        .filter(element => !element.disabled && element.offsetParent !== null);
+      if (!focusable.length) return;
+      const first = focusable[0], last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    });
+
+    document.getElementById('newUrl').addEventListener('keydown', event => { if (event.key === 'Enter') validateAndAdd(); });
+    document.getElementById('newTitle').addEventListener('keydown', event => { if (event.key === 'Enter') document.getElementById('newUrl').focus(); });
+    document.getElementById('searchInput').addEventListener('keydown', event => { if (event.key === 'Escape') clearSearch(); });
+
+    window.addEventListener('load', init, { once: true });
+    window.addEventListener('online', () => {
+      if (document.getElementById('app').classList.contains('visible')) {
+        showSyncBadge();
+        fetchFresh(false);
+      } else retryInit();
+    });
+    window.addEventListener('offline', () => showStatus('You are offline. Changes require an internet connection.', 'warn'));
+    window.addEventListener('beforeunload', () => {
+      refreshController?.abort();
+      mutationController?.abort();
+    });
   </script>
 </body>
 </html>
