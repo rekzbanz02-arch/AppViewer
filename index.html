@@ -1471,24 +1471,21 @@
       if (!selectedUrl) return;
       if (!navigator.onLine) { showStatus('No Internet Connection.', 'error'); return; }
       clearStatus();
-      /* ✅ Open the tab immediately, in the same click handler, so it's still
-         tied to the user gesture. Calling window.open() later (inside a
-         setTimeout, or with 'noopener') either gets blocked by real popup
-         blockers, or returns null even when it worked. Navigate this
-         already-open tab once we're ready. */
-      const newWin = window.open('', '_blank');
-      if (newWin) newWin.opener = null;
       setLoading('openBtn', 'openBtnText', 'openSpin', true, 'Opening…');
-      setTimeout(() => {
-        setLoading('openBtn', 'openBtnText', 'openSpin', false, '↗ Open App');
-        if (!newWin) showStatus('Popup was blocked. Please allow popups.', 'warn');
-        else {
-          newWin.location.href = selectedUrl;
-          const m = getMeta(selectedUrl);
-          entryMeta[selectedUrl] = { ...m, lastOpened: Date.now() };
-          saveMeta(); renderCards();
-        }
-      }, 200);
+      /* ✅ Nothing needs to finish before this URL is known, so open it right
+         away, in the same click — this is what user-gesture-gated popup
+         rules require. (No 'noopener' here so we can actually tell whether
+         it opened; opener is stripped manually right after instead.) */
+      const newWin = window.open(selectedUrl, '_blank');
+      if (newWin) newWin.opener = null;
+      setLoading('openBtn', 'openBtnText', 'openSpin', false, '↗ Open App');
+      if (!newWin) {
+        showBlockedLink(selectedUrl);
+      } else {
+        const m = getMeta(selectedUrl);
+        entryMeta[selectedUrl] = { ...m, lastOpened: Date.now() };
+        saveMeta(); renderCards();
+      }
     }
 
     /* ── DELETE ── */
@@ -1552,7 +1549,7 @@
             renderCards();
             showStatus('🎉 "' + st + '" saved! Opening…', 'success');
             setTimeout(() => {
-              if (!newWin) showStatus('✓ Saved. Popup blocked — click Open to launch.', 'warn');
+              if (!newWin) showBlockedLink(su);
               else { newWin.location.href = su; clearStatus(); }
             }, 800);
           } else {
@@ -1570,6 +1567,18 @@
     /* ── HELPERS ── */
     function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
     function showStatus(msg, type) { const e = document.getElementById('status'); e.textContent = msg; e.className = type; e.style.display = 'block'; }
+    /* ✅ Some browsers (or a "always block" site setting) block window.open()
+       even when it's called synchronously in a click handler — that's a
+       browser/site setting, not something code can override. This shows a
+       real, physically-tappable link instead: a link the user clicks
+       themselves is never subject to the popup blocker. */
+    function showBlockedLink(url) {
+      const e = document.getElementById('status');
+      e.innerHTML = 'Popup was blocked. <a href="' + esc(url) + '" target="_blank" rel="noopener noreferrer" ' +
+        'style="color:inherit;text-decoration:underline;font-weight:800;">Tap here to open it</a> — ' +
+        'or allow popups for this site in your browser settings to skip this step next time.';
+      e.className = 'warn'; e.style.display = 'block';
+    }
     function clearStatus()         { const e = document.getElementById('status'); e.style.display = 'none'; e.className = ''; e.textContent = ''; }
     function setLoading(b, t, s, on, label) { document.getElementById(b).disabled = on; document.getElementById(t).innerHTML = label; document.getElementById(s).style.display = on ? 'block' : 'none'; }
     function showLoader(msg) { document.getElementById('loaderMsg').textContent = msg || 'Loading…'; document.getElementById('loader').classList.remove('hidden'); document.getElementById('app').classList.remove('visible'); document.getElementById('errorScreen').classList.remove('visible'); }
