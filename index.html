@@ -1472,20 +1472,11 @@
       if (!navigator.onLine) { showStatus('No Internet Connection.', 'error'); return; }
       clearStatus();
       setLoading('openBtn', 'openBtnText', 'openSpin', true, 'Opening…');
-      /* ✅ Nothing needs to finish before this URL is known, so open it right
-         away, in the same click — this is what user-gesture-gated popup
-         rules require. (No 'noopener' here so we can actually tell whether
-         it opened; opener is stripped manually right after instead.) */
-      const newWin = window.open(selectedUrl, '_blank');
-      if (newWin) newWin.opener = null;
+      window.open(selectedUrl, '_blank', 'noopener,noreferrer');
       setLoading('openBtn', 'openBtnText', 'openSpin', false, '↗ Open App');
-      if (!newWin) {
-        showBlockedLink(selectedUrl);
-      } else {
-        const m = getMeta(selectedUrl);
-        entryMeta[selectedUrl] = { ...m, lastOpened: Date.now() };
-        saveMeta(); renderCards();
-      }
+      const m = getMeta(selectedUrl);
+      entryMeta[selectedUrl] = { ...m, lastOpened: Date.now() };
+      saveMeta(); renderCards();
     }
 
     /* ── DELETE ── */
@@ -1525,13 +1516,6 @@
       if (!navigator.onLine) { showStatus('No Internet Connection.', 'error'); return; }
       setLoading('validateBtn', 'validateBtnText', 'validateSpin', true, 'Saving…');
       clearStatus();
-      /* ✅ Open the tab immediately, in the same click handler, before the
-         network request — a window.open() called after an await/fetch is
-         no longer tied to the user gesture and gets blocked by real popup
-         blockers. Navigate this already-open tab once the save succeeds,
-         or close it if the save fails. */
-      const newWin = window.open('', '_blank');
-      if (newWin) newWin.opener = null;
       fetchWithTimeout(APPS_SCRIPT_URL + '?action=validateAndSave&url=' + encodeURIComponent(rawUrl) + '&title=' + encodeURIComponent(rawTitle))
         .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
         .then(data => {
@@ -1549,16 +1533,12 @@
             renderCards();
             showStatus('🎉 "' + st + '" saved! Opening…', 'success');
             setTimeout(() => {
-              if (!newWin) showBlockedLink(su);
-              else { newWin.location.href = su; clearStatus(); }
+              window.open(su, '_blank', 'noopener,noreferrer');
+              clearStatus();
             }, 800);
-          } else {
-            if (newWin) newWin.close();
-            showStatus('✗ ' + (data.message || 'Could not save.'), 'error');
-          }
+          } else showStatus('✗ ' + (data.message || 'Could not save.'), 'error');
         })
         .catch(err => {
-          if (newWin) newWin.close();
           setLoading('validateBtn', 'validateBtnText', 'validateSpin', false, 'Add');
           showStatus(err.name === 'AbortError' ? 'Timed out. Try again.' : 'Request failed: ' + err.message, 'error');
         });
@@ -1567,18 +1547,6 @@
     /* ── HELPERS ── */
     function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
     function showStatus(msg, type) { const e = document.getElementById('status'); e.textContent = msg; e.className = type; e.style.display = 'block'; }
-    /* ✅ Some browsers (or a "always block" site setting) block window.open()
-       even when it's called synchronously in a click handler — that's a
-       browser/site setting, not something code can override. This shows a
-       real, physically-tappable link instead: a link the user clicks
-       themselves is never subject to the popup blocker. */
-    function showBlockedLink(url) {
-      const e = document.getElementById('status');
-      e.innerHTML = 'Popup was blocked. <a href="' + esc(url) + '" target="_blank" rel="noopener noreferrer" ' +
-        'style="color:inherit;text-decoration:underline;font-weight:800;">Tap here to open it</a> — ' +
-        'or allow popups for this site in your browser settings to skip this step next time.';
-      e.className = 'warn'; e.style.display = 'block';
-    }
     function clearStatus()         { const e = document.getElementById('status'); e.style.display = 'none'; e.className = ''; e.textContent = ''; }
     function setLoading(b, t, s, on, label) { document.getElementById(b).disabled = on; document.getElementById(t).innerHTML = label; document.getElementById(s).style.display = on ? 'block' : 'none'; }
     function showLoader(msg) { document.getElementById('loaderMsg').textContent = msg || 'Loading…'; document.getElementById('loader').classList.remove('hidden'); document.getElementById('app').classList.remove('visible'); document.getElementById('errorScreen').classList.remove('visible'); }
