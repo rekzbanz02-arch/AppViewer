@@ -712,6 +712,14 @@
       }
     }
 
+    /* ── All-apps titles list (compact) ── */
+    .all-apps { display:flex; flex-wrap:wrap; gap:5px; max-height:118px; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+    .all-apps span { font-size:11px; font-weight:700; line-height:1.3; color:var(--text); background:var(--item-bg); border:1px solid var(--border); border-radius:10px; padding:3px 9px; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .all-apps span.is-hidden { opacity:.5; }
+    .all-apps-grip { height:16px; margin-top:2px; display:flex; align-items:center; justify-content:center; cursor:ns-resize; touch-action:none; -webkit-user-select:none; user-select:none; }
+    .all-apps-grip::before { content:''; width:38px; height:4px; border-radius:4px; background:var(--border-hi); }
+    .all-apps-grip:hover::before, .all-apps-grip.dragging::before { background:var(--input-focus-c); }
+
   </style>
 </head>
 <body>
@@ -934,6 +942,12 @@
 
       <div style="padding:0 22px;">
         <div id="status" role="status" aria-live="polite" style="margin-bottom:16px;"></div>
+      </div>
+
+      <div class="card-sec" id="allAppsSec" style="display:none;padding-bottom:4px;">
+        <div class="divider" style="margin-bottom:10px;">📋 all apps · <span id="allAppsCount">0</span></div>
+        <div class="all-apps" id="allAppsList"></div>
+        <div class="all-apps-grip" id="allAppsGrip" title="Drag to resize" aria-label="Drag to resize app list"></div>
       </div>
 
       <div class="card-sec">
@@ -1663,6 +1677,24 @@
       return card;
     }
 
+    function renderAllApps() {
+      const sec = document.getElementById('allAppsSec');
+      const box = document.getElementById('allAppsList');
+      document.getElementById('allAppsCount').textContent = savedEntries.length;
+      sec.style.display = savedEntries.length ? '' : 'none';
+      box.replaceChildren();
+      savedEntries
+        .map(entry => ({ name: entry.title || entry.url.replace(/^https?:\/\//, '').replace(/\/$/, ''), hidden: getMeta(entry.url).hidden }))
+        .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
+        .forEach(item => {
+          const chip = document.createElement('span');
+          chip.textContent = item.name;
+          chip.title = item.name;
+          if (item.hidden) chip.className = 'is-hidden';
+          box.appendChild(chip);
+        });
+    }
+
     function renderCards() {
       const list = document.getElementById('appList');
       const filter = currentFilter.toLocaleLowerCase().trim();
@@ -1679,6 +1711,7 @@
         : searched;
 
       document.getElementById('urlCount').textContent = savedEntries.length;
+      renderAllApps();
       const resultsLabel = document.getElementById('resultsLabel');
       const resultsBadge = document.getElementById('resultsBadge');
       if (filter || activeTagFilters.size) {
@@ -1931,6 +1964,36 @@
     }
 
     function hideError() { document.getElementById('errorScreen').classList.remove('visible'); }
+
+    (function initTitlesResize() {
+      const box = document.getElementById('allAppsList');
+      const grip = document.getElementById('allAppsGrip');
+      const KEY = 'av_titles_h';
+      const MIN_H = 40;
+      const saved = parseInt(storageGet(KEY, ''), 10);
+      if (saved >= MIN_H) box.style.maxHeight = saved + 'px';
+      let startY = 0, startH = 0, current = 0;
+      grip.addEventListener('pointerdown', event => {
+        startY = event.clientY;
+        startH = box.getBoundingClientRect().height;
+        current = startH;
+        grip.classList.add('dragging');
+        grip.setPointerCapture(event.pointerId);
+        event.preventDefault();
+      });
+      grip.addEventListener('pointermove', event => {
+        if (!grip.classList.contains('dragging')) return;
+        current = Math.max(MIN_H, Math.min(box.scrollHeight, startH + (event.clientY - startY)));
+        box.style.maxHeight = current + 'px';
+      });
+      const end = () => {
+        if (!grip.classList.contains('dragging')) return;
+        grip.classList.remove('dragging');
+        storageSet(KEY, String(Math.round(current)));
+      };
+      grip.addEventListener('pointerup', end);
+      grip.addEventListener('pointercancel', end);
+    })();
 
     loadMeta();
     setTheme(THEMES.has(storageGet(THEME_KEY, 'dark')) ? storageGet(THEME_KEY, 'dark') : 'dark');
